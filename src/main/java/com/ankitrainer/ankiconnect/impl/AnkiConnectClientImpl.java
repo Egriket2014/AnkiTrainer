@@ -16,7 +16,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 
 @Component
@@ -25,7 +24,7 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private static final Logger log = LoggerFactory.getLogger(AnkiConnectClient.class);
+    private static final Logger log = LoggerFactory.getLogger(AnkiConnectClientImpl.class);
 
     @Value("${ankiconnect.url:http://localhost:8765}")
     private String ankiConnectUrl;
@@ -90,18 +89,29 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
     }
 
     @Override
-    public List<String> getDeckNames() {
-        log.info("Fetching deck list...");
+    public JsonNode getDeckNames() {
+        log.info("Fetching deck names from Anki...");
         JsonNode response = sendRequest("deckNames", null);
+        log.debug("AnkiConnect 'deckNames' response JsonNode={}", response);
 
-        List<String> decks = objectMapper.convertValue(
-                response.get("result"),
-                objectMapper.getTypeFactory().constructCollectionType(List.class, String.class)
-        );
+        return response;
+    }
 
-        log.info("Found {} decks", decks.size());
-        log.debug("Deck list: {}", decks);
+    @Override
+    public JsonNode getModelNames() {
+        log.info("Fetching all model names from Anki...");
+        JsonNode response = sendRequest("modelNames", null);
+        log.debug("AnkiConnect 'modelNames' response JsonNode={}", response);
 
-        return decks;
+        return response;
+    }
+
+    @Override
+    public JsonNode getModelFieldNames(String modelName) {
+        log.info("Fetching model field names for model '{}' from Anki...", modelName);
+        JsonNode response = sendRequest("modelFieldNames", Map.of("modelName", modelName));
+        log.debug("AnkiConnect 'modelFieldNames' response JsonNode={}", response);
+
+        return response;
     }
 }

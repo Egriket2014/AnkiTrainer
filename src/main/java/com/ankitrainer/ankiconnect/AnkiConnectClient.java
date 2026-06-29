@@ -1,8 +1,7 @@
 package com.ankitrainer.ankiconnect;
 
 import com.ankitrainer.exception.AnkiConnectException;
-
-import java.util.List;
+import com.fasterxml.jackson.databind.JsonNode;
 
 public interface AnkiConnectClient {
 
@@ -11,11 +10,38 @@ public interface AnkiConnectClient {
      * <p>
      * This method calls the AnkiConnect action: <code>deckNames</code>.
      *
-     * @return a list of deck names or empty list if no decks exist
+     * @return AnkiConnect response as {@link JsonNode}
      * @throws AnkiConnectException if the connection to Anki fails, the response
      *                              contains an error, the response cannot be parsed
      *                              or a low-level I/O error occurs (e.g., connection reset)
      */
-    List<String> getDeckNames();
+    JsonNode getDeckNames();
+
+
+    /**
+     * Retrieves the names of all note models (card types) available in Anki.
+     * <p>
+     * This method calls the AnkiConnect action: <code>modelNames</code>.
+     *
+     * @return AnkiConnect response as {@link JsonNode}
+     * @throws AnkiConnectException if the connection to Anki fails, the response
+     *                              contains an error, the response cannot be parsed
+     *                              or a low-level I/O error occurs (e.g., connection reset)
+     */
+    JsonNode getModelNames();
+
+
+    /**
+     * Retrieves note type info (name, field names) for a given note type ID.
+     * <p>
+     * This method calls the AnkiConnect action: <code>modelFieldNames</code>.
+     *
+     * @param modelName the name of the model
+     * @return AnkiConnect response as {@link JsonNode}
+     * @throws AnkiConnectException if the connection to Anki fails, the response
+     *                              contains an error, the response cannot be parsed
+     *                              or a low-level I/O error occurs (e.g., connection reset)
+     */
+    JsonNode getModelFieldNames(String modelName);
 
 }
