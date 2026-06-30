@@ -1,6 +1,7 @@
 package com.ankitrainer.service.impl;
 
 import com.ankitrainer.ankiconnect.AnkiConnectClient;
+import com.ankitrainer.model.CardDto;
 import com.ankitrainer.service.AnkiConnectService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class AnkiConnectServiceImpl implements AnkiConnectService {
@@ -54,7 +56,7 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
 
     @Override
     public List<String> getModelFieldNames(String modelName) {
-        JsonNode ankiResponse = client.getModelFieldNames(modelName);
+        JsonNode ankiResponse = client.getFieldNamesForModel(modelName);
 
         List<String> fieldNames = objectMapper.convertValue(
                 ankiResponse.get("result"),
@@ -65,5 +67,61 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
         log.debug("Field names for model '{}': {}", modelName, fieldNames);
 
         return fieldNames;
+    }
+
+    @Override
+    public List<CardDto> getCardsByModelAndFields(
+            String deckName,
+            String modelName,
+            String wordFieldName,
+            String translationFieldName,
+            String extraFieldName
+    ) {
+        JsonNode ankiResponseAllNotesIds = client.getNotesIdsForDeck(deckName);
+        List<Long> allNoteIds = objectMapper.convertValue(
+                ankiResponseAllNotesIds.get("result"),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, Long.class)
+        );
+
+        if (allNoteIds.isEmpty()) {
+            log.info("No notes found in deck '{}'", deckName);
+            return List.of();
+        }
+        log.debug("Found {} total notes in deck", allNoteIds.size());
+
+        JsonNode ankiResponseAllNotesInfo = client.getNotesInfoByIds(allNoteIds);
+        List<JsonNode> noteList = objectMapper.convertValue(
+                ankiResponseAllNotesInfo.get("result"),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, JsonNode.class)
+        );
+
+        return noteList.stream()
+                .filter(noteNode -> modelName.equals(noteNode.get("modelName").asText())) // TODO filter verbs
+                .map(noteNode -> {
+                    JsonNode fieldsNode = noteNode.get("fields");
+
+                    String word = extractFieldValue(fieldsNode, wordFieldName);
+                    String translation = extractFieldValue(fieldsNode, translationFieldName);
+                    String extra = extraFieldName != null ? extractFieldValue(fieldsNode, extraFieldName) : "";
+
+                    log.info("MAP WORD '{}'", word);
+
+                    return CardDto.builder()
+                            .noteId(noteNode.get("noteId").asLong())
+                            .word(word)
+                            .translation(translation)
+                            .extra(extra)
+                            .modelName(noteNode.get("modelName").asText())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private String extractFieldValue(JsonNode fieldsNode, String fieldName) {
+        if (fieldsNode.has(fieldName) && fieldsNode.get(fieldName).has("value")) {
+            return fieldsNode.get(fieldName).get("value").asText();
+        } else {
+            return  "";
+        }
     }
 }

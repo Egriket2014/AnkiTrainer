@@ -1,5 +1,6 @@
 package com.ankitrainer.service.impl;
 
+import com.ankitrainer.model.CardDto;
 import com.ankitrainer.service.AnkiConnectService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -30,5 +31,17 @@ class AnkiConnectServiceImplTest {
     void getModelFieldNames() {
         List<String> names = ankiConnectService.getModelFieldNames("Japanese Sentence Card");
         Assertions.assertFalse(names.isEmpty());
+    }
+
+    @Test
+    void getCardsByModelAndFields() {
+        List<CardDto> list = ankiConnectService.getCardsByModelAndFields(
+                "ЯПОНСКИЙ",
+                "Japanese Sentence Card (с обратной карточкой)",
+                "Word",
+                "Meaning",
+                "Reading"
+        );
+        Assertions.assertFalse(list.isEmpty());
     }
 }

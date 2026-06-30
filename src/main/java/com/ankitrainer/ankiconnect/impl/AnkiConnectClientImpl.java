@@ -16,6 +16,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -107,10 +108,28 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
     }
 
     @Override
-    public JsonNode getModelFieldNames(String modelName) {
+    public JsonNode getFieldNamesForModel(String modelName) {
         log.info("Fetching model field names for model '{}' from Anki...", modelName);
         JsonNode response = sendRequest("modelFieldNames", Map.of("modelName", modelName));
         log.debug("AnkiConnect 'modelFieldNames' response JsonNode={}", response);
+
+        return response;
+    }
+
+    @Override
+    public JsonNode getNotesIdsForDeck(String deckName) {
+        log.info("Fetching notes IDs for deck '{}' from Anki...", deckName);
+        JsonNode response = sendRequest("findNotes", Map.of("query", "deck:" + deckName));
+        log.debug("AnkiConnect 'findNotes' response JsonNode={}", response);
+
+        return response;
+    }
+
+    @Override
+    public JsonNode getNotesInfoByIds(List<Long> noteIds) {
+        log.info("Fetching notes from Anki...");
+        JsonNode response = sendRequest("notesInfo", Map.of("notes", noteIds));
+        log.debug("AnkiConnect 'notesInfo' response JsonNode={}", response);
 
         return response;
     }

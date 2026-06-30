@@ -3,6 +3,8 @@ package com.ankitrainer.ankiconnect;
 import com.ankitrainer.exception.AnkiConnectException;
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.util.List;
+
 public interface AnkiConnectClient {
 
     /**
@@ -32,7 +34,7 @@ public interface AnkiConnectClient {
 
 
     /**
-     * Retrieves note type info (name, field names) for a given note type ID.
+     * Retrieves field names for a given model name.
      * <p>
      * This method calls the AnkiConnect action: <code>modelFieldNames</code>.
      *
@@ -42,6 +44,34 @@ public interface AnkiConnectClient {
      *                              contains an error, the response cannot be parsed
      *                              or a low-level I/O error occurs (e.g., connection reset)
      */
-    JsonNode getModelFieldNames(String modelName);
+    JsonNode getFieldNamesForModel(String modelName);
+
+
+    /**
+     * Retrieves notes(cards) IDs for a given deck name.
+     * <p>
+     * This method calls the AnkiConnect action: <code>findNotes</code>.
+     *
+     * @param deckName the name of the deck
+     * @return AnkiConnect response as {@link JsonNode}
+     * @throws AnkiConnectException if the connection to Anki fails, the response
+     *                              contains an error, the response cannot be parsed
+     *                              or a low-level I/O error occurs (e.g., connection reset)
+     */
+    JsonNode getNotesIdsForDeck(String deckName);
+
+
+    /**
+     * Retrieves notes(cards) content by notes IDs.
+     * <p>
+     * This method calls the AnkiConnect action: <code>notesInfo</code>.
+     *
+     * @param noteIds notes IDs
+     * @return AnkiConnect response as {@link JsonNode}
+     * @throws AnkiConnectException if the connection to Anki fails, the response
+     *                              contains an error, the response cannot be parsed
+     *                              or a low-level I/O error occurs (e.g., connection reset)
+     */
+    JsonNode getNotesInfoByIds(List<Long> noteIds);
 
 }
