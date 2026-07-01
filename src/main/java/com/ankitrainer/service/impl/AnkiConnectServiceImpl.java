@@ -101,10 +101,9 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
                     JsonNode fieldsNode = noteNode.get("fields");
 
                     String word = extractFieldValue(fieldsNode, wordFieldName);
+                    log.debug("Mapping word {}", word);
                     String translation = extractFieldValue(fieldsNode, translationFieldName);
                     String extra = extraFieldName != null ? extractFieldValue(fieldsNode, extraFieldName) : "";
-
-                    log.info("MAP WORD '{}'", word);
 
                     return CardDto.builder()
                             .noteId(noteNode.get("noteId").asLong())

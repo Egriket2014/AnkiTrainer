@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:x-bind="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Anki Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+<div class="container mx-auto p-8" x-data="ankiConfig()" x-init="init()">
+    <h1 class="text-2xl font-bold mb-6">⚙️ Anki Trainer Configuration</h1>
+
+    <!-- 1. Выбор колоды -->
+    <div class="mb-4">
+        <label class="block font-bold mb-1">1. Выберите колоду:</label>
+        <select x-model="selectedDeck" @change="onDeckChange()" class="border p-2 w-64 rounded">
+            <option value="">-- Выберите колоду --</option>
+            <template x-for="deck in decks" :key="deck">
+                <option x-bind:value="deck" x-text="deck"></option>
+            </template>
+        </select>
+    </div>
+
+    <!-- 2. Выбор модели (активируется, если выбрана колода) -->
+    <div class="mb-4">
+        <label class="block font-bold mb-1">2. Выберите тип карточки (Model):</label>
+        <select x-model="selectedModel" @change="onModelChange()" class="border p-2 w-64 rounded" :disabled="!selectedDeck">
+            <option value="">-- Выберите модель --</option>
+            <template x-for="model in allModels" :key="model">
+                <option x-bind:value="model" x-text="model"></option>
+            </template>
+        </select>
+    </div>
+
+    <!-- 3. Выбор полей (активируются, если выбрана модель) -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        <div>
+            <label class="block font-bold mb-1">3a. Поле Слова:</label>
+            <select x-model="wordField" class="border p-2 w-full rounded" :disabled="!selectedModel">
+                <option value="">-- Выберите поле --</option>
+                <template x-for="field in fields" :key="field">
+                    <option x-bind:value="field" x-text="field"></option>
+                </template>
+            </select>
+        </div>
+        <div>
+            <label class="block font-bold mb-1">3b. Поле Перевода:</label>
+            <select x-model="translationField" class="border p-2 w-full rounded" :disabled="!selectedModel">
+                <option value="">-- Выберите поле --</option>
+                <template x-for="field in fields" :key="field">
+                    <option x-bind:value="field" x-text="field"></option>
+                </template>
+            </select>
+        </div>
+        <div>
+            <label class="block font-bold mb-1">3c. Доп. поле (опц.):</label>
+            <select x-model="extraField" class="border p-2 w-full rounded" :disabled="!selectedModel">
+                <option value="">-- Нет --</option>
+                <template x-for="field in fields" :key="field">
+                    <option x-bind:value="field" x-text="field"></option>
+                </template>
+            </select>
+        </div>
+    </div>
+
+    <!-- 4. Кнопка загрузки карточек -->
+    <button @click="loadCards()" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+            :disabled="!selectedDeck || !selectedModel || !wordField || !translationField">
+        ▶ Загрузить карточки
+    </button>
+
+    <!-- 5. Результат (таблица с карточками) -->
+    <div x-show="cards.length > 0" class="mt-8">
+        <h2 class="text-xl font-bold mb-2">Результат:</h2>
+        <table class="table-auto border-collapse border border-gray-400 w-full">
+            <thead>
+            <tr>
+                <th class="border border-gray-300 px-4 py-2">Слово</th>
+                <th class="border border-gray-300 px-4 py-2">Перевод</th>
+                <th class="border border-gray-300 px-4 py-2">Доп. поле</th>
+            </tr>
+            </thead>
+            <tbody>
+            <template x-for="card in cards" :key="card.noteId">
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2" x-text="card.word"></td>
+                    <td class="border border-gray-300 px-4 py-2" x-html="card.translation"></td>
+                    <td class="border border-gray-300 px-4 py-2" x-text="card.extra"></td>
+                </tr>
+            </template>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function ankiConfig() {
+        return {
+            decks: [],
+            allModels: [],
+            selectedDeck: '',
+            selectedModel: '',
+            wordField: '',
+            translationField: '',
+            extraField: '',
+            fields: [],
+            cards: [],
+
+            init() {
+                // Загружаем колоды
+                fetch('/api/decks')
+                    .then(response => response.json())
+                    .then(data => {
+                        this.decks = data;
+                        console.log('✅ Колоды загружены:', this.decks);
+                    })
+                    .catch(error => console.error('❌ Ошибка загрузки колод:', error));
+
+                // Загружаем все модели
+                fetch('/api/models')
+                    .then(response => response.json())
+                    .then(data => {
+                        this.allModels = data;
+                        console.log('✅ Модели загружены:', this.allModels);
+                    })
+                    .catch(error => console.error('❌ Ошибка загрузки моделей:', error));
+            },
+
+            onDeckChange() {
+                this.selectedModel = '';
+                this.wordField = '';
+                this.translationField = '';
+                this.extraField = '';
+                this.fields = [];
+                this.cards = [];
+            },
+
+            onModelChange() {
+                this.wordField = '';
+                this.translationField = '';
+                this.extraField = '';
+                this.cards = [];
+
+                if (!this.selectedModel) {
+                    this.fields = [];
+                    return;
+                }
+
+                fetch(`/api/fields?modelName=${encodeURIComponent(this.selectedModel)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        this.fields = data;
+                        console.log('✅ Поля загружены:', this.fields);
+                    })
+                    .catch(error => console.error('❌ Ошибка загрузки полей:', error));
+            },
+
+            loadCards() {
+                if (!this.selectedDeck || !this.selectedModel || !this.wordField || !this.translationField) {
+                    alert('Пожалуйста, заполните все обязательные поля!');
+                    return;
+                }
+
+                const payload = new URLSearchParams({
+                    deckName: this.selectedDeck,
+                    modelName: this.selectedModel,
+                    wordField: this.wordField,
+                    translationField: this.translationField,
+                    extraField: this.extraField || ''
+                });
+
+                fetch('/api/cards', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: payload
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        this.cards = data;
+                        console.log('✅ Карточки загружены:', this.cards);
+                    })
+                    .catch(error => console.error('❌ Ошибка загрузки карточек:', error));
+            }
+        }
+    }
+</script>
+</body>
+</html>
