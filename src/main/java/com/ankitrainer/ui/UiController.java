@@ -54,7 +54,7 @@ public class UiController {
         return service.getModelNames();
     }
 
-    @PostMapping("/api/cards")
+    @PostMapping("/api/cards/verbs")
     @ResponseBody
     public List<CardDto> getCards(
             @RequestParam String deckName,
@@ -63,6 +63,6 @@ public class UiController {
             @RequestParam String translationField,
             @RequestParam(required = false) String extraField
     ) {
-        return service.getCardsByModelAndFields(deckName, modelName, wordField, translationField, extraField);
+        return service.getVerbsByModelAndFields(deckName, modelName, wordField, translationField, extraField);
     }
 }

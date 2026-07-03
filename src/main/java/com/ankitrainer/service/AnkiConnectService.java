@@ -44,7 +44,7 @@ public interface AnkiConnectService {
      * @return a list of CardDto
      * @throws AnkiConnectException if request to AnkiConnect fails
      */
-    List<CardDto> getCardsByModelAndFields(
+    List<CardDto> getVerbsByModelAndFields(
             String deckName,
             String modelName,
             String wordFieldName,

@@ -34,8 +34,8 @@ class AnkiConnectServiceImplTest {
     }
 
     @Test
-    void getCardsByModelAndFields() {
-        List<CardDto> list = ankiConnectService.getCardsByModelAndFields(
+    void getVerbsByModelAndFields() {
+        List<CardDto> list = ankiConnectService.getVerbsByModelAndFields(
                 "ЯПОНСКИЙ",
                 "Japanese Sentence Card (с обратной карточкой)",
                 "Word",

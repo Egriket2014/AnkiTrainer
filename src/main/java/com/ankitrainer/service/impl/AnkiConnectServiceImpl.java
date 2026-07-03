@@ -1,6 +1,7 @@
 package com.ankitrainer.service.impl;
 
 import com.ankitrainer.ankiconnect.AnkiConnectClient;
+import com.ankitrainer.language.LanguageAnalyzer;
 import com.ankitrainer.model.CardDto;
 import com.ankitrainer.service.AnkiConnectService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -21,6 +22,9 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private LanguageAnalyzer languageAnalyzer;
 
     private static final Logger log = LoggerFactory.getLogger(AnkiConnectServiceImpl.class);
 
@@ -70,7 +74,7 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
     }
 
     @Override
-    public List<CardDto> getCardsByModelAndFields(
+    public List<CardDto> getVerbsByModelAndFields(
             String deckName,
             String modelName,
             String wordFieldName,
@@ -96,7 +100,11 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
         );
 
         return noteList.stream()
-                .filter(noteNode -> modelName.equals(noteNode.get("modelName").asText())) // TODO filter verbs
+                .filter(noteNode -> modelName.equals(noteNode.get("modelName").asText()))
+                .filter(noteNode -> {
+                    String word = extractFieldValue(noteNode.get("fields"), wordFieldName);
+                    return languageAnalyzer.isVerb(word);
+                })
                 .map(noteNode -> {
                     JsonNode fieldsNode = noteNode.get("fields");
 
