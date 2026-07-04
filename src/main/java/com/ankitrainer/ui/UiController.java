@@ -1,17 +1,16 @@
 package com.ankitrainer.ui;
 
+import com.ankitrainer.config.ConfigData;
 import com.ankitrainer.model.CardDto;
 import com.ankitrainer.service.AnkiConnectService;
+import com.ankitrainer.service.ConfigService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -24,22 +23,63 @@ public class UiController {
     @Autowired
     private AnkiConnectService service;
 
+    @Autowired
+    private ConfigService configService;
+
     @GetMapping("/")
     public String index() {
-        return "redirect:/config";
+        if (configService.hasSavedConfig()) {
+            return "redirect:/menu";
+        } else {
+            return "redirect:/config";
+        }
+    }
+
+    @GetMapping("/menu")
+    public String menuPage() {
+        return "menu";
     }
 
     @GetMapping("/config")
     public String configPage(Model model) {
         model.addAttribute("decks", service.getDecksNames());
         model.addAttribute("allModels", service.getModelNames());
-        return "config"; // Это будет наша единственная страница
+
+        ConfigData existingConfig = configService.loadConfig();
+        if (existingConfig != null) {
+            log.info("Config added to model: {}", existingConfig);
+            model.addAttribute("config", existingConfig);
+        } else {
+            model.addAttribute("config", new ConfigData());
+        }
+
+        return "config";
     }
 
-    @GetMapping("/api/fields")
+    @GetMapping("/trainer")
+    public String trainerPage(Model model) {
+        ConfigData config = configService.loadConfig();
+        if (config == null || !config.isComplete()) {
+            return "redirect:/config";
+        }
+
+        model.addAttribute("config", config);
+        return "trainer";
+    }
+
+    @PostMapping("/api/config/save")
     @ResponseBody
-    public List<String> getFields(@RequestParam String modelName) {
-        return service.getModelFieldNames(modelName);
+    public ConfigData saveConfig(@RequestBody ConfigData config) {
+        log.info("Saving configuration: {}", config);
+        configService.saveConfig(config);
+        return config;
+    }
+
+    @PostMapping("/api/config/reset")
+    @ResponseBody
+    public void resetConfig() {
+        log.info("Resetting configuration");
+        configService.saveConfig(null);
     }
 
     @GetMapping("/api/decks")
@@ -54,9 +94,15 @@ public class UiController {
         return service.getModelNames();
     }
 
+    @GetMapping("/api/fields")
+    @ResponseBody
+    public List<String> getFields(@RequestParam String modelName) {
+        return service.getModelFieldNames(modelName);
+    }
+
     @PostMapping("/api/cards/verbs")
     @ResponseBody
-    public List<CardDto> getCards(
+    public List<CardDto> getVerbs(
             @RequestParam String deckName,
             @RequestParam String modelName,
             @RequestParam String wordField,
