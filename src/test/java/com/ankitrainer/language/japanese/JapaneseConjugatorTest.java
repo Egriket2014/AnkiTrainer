@@ -217,4 +217,46 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("する", "past_negative_polite")).isEqualTo("しませんでした");
         assertThat(conjugator.conjugate("来る", "past_negative_polite")).isEqualTo("来ませんでした");
     }
+
+    @Test
+    void testAru_AllForms() {
+        assertThat(conjugator.conjugate("ある", "te")).isEqualTo("あって");
+        assertThat(conjugator.conjugate("ある", "polite")).isEqualTo("あります");
+        assertThat(conjugator.conjugate("ある", "negative")).isEqualTo("ない");
+        assertThat(conjugator.conjugate("ある", "negative_polite")).isEqualTo("ありません");
+        assertThat(conjugator.conjugate("ある", "past")).isEqualTo("あった");
+        assertThat(conjugator.conjugate("ある", "past_polite")).isEqualTo("ありました");
+        assertThat(conjugator.conjugate("ある", "past_negative")).isEqualTo("なかった");
+        assertThat(conjugator.conjugate("ある", "past_negative_polite")).isEqualTo("ありませんでした");
+    }
+
+    @Test
+    void testIru_Ichidan_AllForms() {
+        assertThat(conjugator.conjugate("いる", "te")).isEqualTo("いて");
+        assertThat(conjugator.conjugate("いる", "polite")).isEqualTo("います");
+        assertThat(conjugator.conjugate("いる", "negative")).isEqualTo("いない");
+        assertThat(conjugator.conjugate("いる", "negative_polite")).isEqualTo("いません");
+        assertThat(conjugator.conjugate("いる", "past")).isEqualTo("いた");
+        assertThat(conjugator.conjugate("いる", "past_polite")).isEqualTo("いました");
+        assertThat(conjugator.conjugate("いる", "past_negative")).isEqualTo("いなかった");
+        assertThat(conjugator.conjugate("いる", "past_negative_polite")).isEqualTo("いませんでした");
+    }
+
+    @Test
+    void testIru_GodanException_AllForms() {
+        assertThat(conjugator.conjugate("要る", "te")).isEqualTo("要って");
+        assertThat(conjugator.conjugate("要る", "polite")).isEqualTo("要ります");
+        assertThat(conjugator.conjugate("要る", "negative")).isEqualTo("要らない");
+        assertThat(conjugator.conjugate("要る", "negative_polite")).isEqualTo("要りません");
+        assertThat(conjugator.conjugate("要る", "past")).isEqualTo("要った");
+        assertThat(conjugator.conjugate("要る", "past_polite")).isEqualTo("要りました");
+        assertThat(conjugator.conjugate("要る", "past_negative")).isEqualTo("要らなかった");
+        assertThat(conjugator.conjugate("要る", "past_negative_polite")).isEqualTo("要りませんでした");
+    }
+
+    @Test
+    void testIruAmbiguity() {
+        assertThat(conjugator.conjugate("いる", "te")).isEqualTo("いて");
+        assertThat(conjugator.conjugate("要る", "te")).isEqualTo("要って");
+    }
 }
