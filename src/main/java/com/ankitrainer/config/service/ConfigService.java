@@ -1,6 +1,6 @@
-package com.ankitrainer.service;
+package com.ankitrainer.config.service;
 
-import com.ankitrainer.config.ConfigData;
+import com.ankitrainer.config.model.ConfigData;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +22,18 @@ public class ConfigService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private ConfigData currentConfig;
+
     public boolean hasSavedConfig() {
         return new File(configFilePath).exists();
     }
 
     public ConfigData loadConfig() {
+        log.info("CURRENTCONFIG={},", currentConfig);
+        if (currentConfig != null) {
+            return currentConfig;
+        }
+
         File configFile = new File(configFilePath);
         if (!configFile.exists()) {
             log.warn("Config file not found {}", configFilePath);
@@ -47,6 +54,7 @@ public class ConfigService {
         try {
             File configFile = new File(configFilePath);
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(configFile, config);
+            currentConfig = config;
             log.info("Configuration saved to: {}", configFilePath);
         } catch (IOException e) {
             log.error("Failed to save config: {}", e.getMessage());

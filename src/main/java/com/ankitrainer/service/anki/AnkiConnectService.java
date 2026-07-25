@@ -1,4 +1,4 @@
-package com.ankitrainer.service;
+package com.ankitrainer.service.anki;
 
 import com.ankitrainer.exception.AnkiConnectException;
 import com.ankitrainer.model.CardDto;

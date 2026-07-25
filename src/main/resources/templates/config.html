@@ -1,33 +1,29 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:x-bind="http://www.w3.org/1999/xhtml">
 <head>
-    <title>Anki Trainer - Настройки</title>
+    <title>Anki Trainer - Settings</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body>
-<div class="container mx-auto p-8"
-     x-data="config(
-         $el.dataset.defaultDeck,
-         $el.dataset.defaultModel,
-         $el.dataset.defaultWordField,
-         $el.dataset.defaultTranslationField,
-         $el.dataset.defaultExtraField
-     )"
-     th:attr="data-default-deck=${config != null ? config.defaultDeck : ''},
-              data-default-model=${config != null ? config.defaultModel : ''},
-              data-default-word-field=${config != null ? config.wordField : ''},
-              data-default-translation-field=${config != null ? config.translationField : ''},
-              data-default-extra-field=${config != null ? config.extraField : ''}"
-     x-init="init()">
+<div class="container mx-auto p-8" x-data="config()" x-init="init()">
 
-    <h1 class="text-2xl font-bold mb-6">⚙️ Настройки тренажёра</h1>
+    <h1 class="text-2xl font-bold mb-6">Settings</h1>
 
     <div class="border p-4 rounded mb-6">
+        <!-- 0. Language -->
         <div class="mb-4">
-            <label class="block font-bold mb-1">1. Колода:</label>
+            <label class="block font-bold mb-1">Language:</label>
+            <select x-model="selectedLanguage" class="border p-2 w-64 rounded">
+                <option value="japanese">Japanese</option>
+            </select>
+        </div>
+
+        <!-- 1. Deck -->
+        <div class="mb-4">
+            <label class="block font-bold mb-1">Deck:</label>
             <select x-model="selectedDeck" @change="onDeckChange()" class="border p-2 w-64 rounded">
-                <option value="">-- Выберите колоду --</option>
+                <option value="">-- Select deck --</option>
                 <template x-for="deck in decks" :key="deck">
                     <option x-bind:value="deck" x-text="deck"
                             x-bind:selected="deck === selectedDeck"></option>
@@ -35,10 +31,11 @@
             </select>
         </div>
 
+        <!-- 2. Note type (Model) -->
         <div class="mb-4">
-            <label class="block font-bold mb-1">2. Тип карточки (Model):</label>
+            <label class="block font-bold mb-1">Note type (Model):</label>
             <select x-model="selectedModel" @change="onModelChange()" class="border p-2 w-64 rounded" :disabled="!selectedDeck">
-                <option value="">-- Выберите модель --</option>
+                <option value="">-- Select model --</option>
                 <template x-for="model in allModels" :key="model">
                     <option x-bind:value="model" x-text="model"
                             x-bind:selected="model === selectedModel"></option>
@@ -46,11 +43,12 @@
             </select>
         </div>
 
+        <!-- 3. Fields -->
         <div class="grid grid-cols-3 gap-4 mb-6">
             <div>
-                <label class="block font-bold mb-1">3a. Поле Слова:</label>
+                <label class="block font-bold mb-1">Word field:</label>
                 <select x-model="wordField" class="border p-2 w-full rounded" :disabled="!selectedModel">
-                    <option value="">-- Выберите поле --</option>
+                    <option value="">-- Select field --</option>
                     <template x-for="field in fields" :key="field">
                         <option x-bind:value="field" x-text="field"
                                 x-bind:selected="field === wordField"></option>
@@ -58,9 +56,9 @@
                 </select>
             </div>
             <div>
-                <label class="block font-bold mb-1">3b. Поле Перевода:</label>
+                <label class="block font-bold mb-1">Translation field:</label>
                 <select x-model="translationField" class="border p-2 w-full rounded" :disabled="!selectedModel">
-                    <option value="">-- Выберите поле --</option>
+                    <option value="">-- Select field --</option>
                     <template x-for="field in fields" :key="field">
                         <option x-bind:value="field" x-text="field"
                                 x-bind:selected="field === translationField"></option>
@@ -68,9 +66,9 @@
                 </select>
             </div>
             <div>
-                <label class="block font-bold mb-1">3c. Доп. поле (опц.):</label>
+                <label class="block font-bold mb-1">Extra field (optional):</label>
                 <select x-model="extraField" class="border p-2 w-full rounded" :disabled="!selectedModel">
-                    <option value="">-- Нет --</option>
+                    <option value="">-- None --</option>
                     <template x-for="field in fields" :key="field">
                         <option x-bind:value="field" x-text="field"
                                 x-bind:selected="field === extraField"></option>
@@ -79,92 +77,101 @@
             </div>
         </div>
 
+        <!-- 4. Cards per session -->
+        <div class="mb-4">
+            <label class="block font-bold mb-1">Cards per session:</label>
+            <input type="number" x-model="sessionCardsLimit" min="1" max="100"
+                   class="border p-2 w-32 rounded">
+        </div>
+
+        <!-- 5. hasSavedConfig (hidden, for logic only) -->
+        <div class="hidden">
+            <span x-text="hasSavedConfig"></span>
+        </div>
+
         <div class="flex gap-2">
             <button @click="saveConfig()"
                     class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
                     :disabled="!isConfigComplete()">
-                💾 Сохранить и перейти в меню
+                Save & go to menu
             </button>
-            <a href="/menu" class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400">
-                Отмена
+            <a href="/menu"
+               class="bg-gray-300 text-gray-800 px-4 py-2 rounded"
+               :class="{'opacity-50 pointer-events-none': !hasSavedConfig, 'hover:bg-gray-400': hasSavedConfig}">
+                Back
             </a>
         </div>
     </div>
 </div>
 
 <script>
-    function config(
-        defaultDeck = '',
-        defaultModel = '',
-        defaultWordField = '',
-        defaultTranslationField = '',
-        defaultExtraField = ''
-    ) {
+    function config() {
         return {
-            // Флаг для предотвращения двойной инициализации
-            initialized: false,
+            // Current values
+            selectedDeck: '',
+            selectedModel: '',
+            wordField: '',
+            translationField: '',
+            extraField: '',
+            sessionCardsLimit: 10,
+            selectedLanguage: 'japanese',
 
-            // Значения из сохранённой конфигурации
-            defaultDeck: defaultDeck,
-            defaultModel: defaultModel,
-            defaultWordField: defaultWordField,
-            defaultTranslationField: defaultTranslationField,
-            defaultExtraField: defaultExtraField,
-
-            // Текущие выбранные значения
-            selectedDeck: defaultDeck,
-            selectedModel: defaultModel,
-            wordField: defaultWordField,
-            translationField: defaultTranslationField,
-            extraField: defaultExtraField,
-
-            // Данные из Anki
+            // Data from server
             decks: [],
             allModels: [],
             fields: [],
 
+            // State
+            hasSavedConfig: false,
+            loading: true,
+            initialized: false,
+
             init() {
-                // Защита от двойной инициализации
-                if (this.initialized) {
-                    console.log('⚠️ Конфигурация уже инициализирована, пропускаем');
-                    return;
-                }
+                if (this.initialized) return;
                 this.initialized = true;
 
-                console.log('🔹 Config page initialized');
-                console.log('🔹 Default values:', {
-                    defaultDeck: this.defaultDeck,
-                    defaultModel: this.defaultModel,
-                    defaultWordField: this.defaultWordField,
-                    defaultTranslationField: this.defaultTranslationField,
-                    defaultExtraField: this.defaultExtraField
-                });
-
-                // Загружаем колоды и модели
+                // 1. Load decks and models
                 this.loadDecksAndModels();
 
-                // Если есть сохранённая модель — загружаем поля
-                if (this.selectedModel) {
-                    this.loadFields();
-                }
+                // 2. Load current config
+                this.loadCurrentConfig();
             },
 
             loadDecksAndModels() {
-                fetch('/api/decks')
-                    .then(r => r.json())
-                    .then(data => {
-                        this.decks = data;
-                        console.log('✅ Колоды загружены:', this.decks);
-                    })
-                    .catch(e => console.error('❌ Ошибка загрузки колод:', e));
+                Promise.all([
+                    fetch('/api/config/decks').then(r => r.json()),
+                    fetch('/api/config/models').then(r => r.json())
+                ])
+                .then(([decks, models]) => {
+                    this.decks = decks;
+                    this.allModels = models;
+                    console.log('✅ Decks and models loaded');
+                })
+                .catch(e => console.error('❌ Error loading data:', e));
+            },
 
-                fetch('/api/models')
+            loadCurrentConfig() {
+                fetch('/api/config/current')
                     .then(r => r.json())
                     .then(data => {
-                        this.allModels = data;
-                        console.log('✅ Модели загружены:', this.allModels);
+                        if (data && data.deck) {
+                            this.selectedDeck = data.deck;
+                            this.selectedModel = data.model || '';
+                            this.wordField = data.wordField || '';
+                            this.translationField = data.translationField || '';
+                            this.extraField = data.extraField || '';
+                            this.sessionCardsLimit = data.sessionCardsLimit || 10;
+                            this.selectedLanguage = data.language || 'japanese';
+                            this.hasSavedConfig = true;
+
+                            // If model is selected, load its fields
+                            if (this.selectedModel) {
+                                this.loadFields();
+                            }
+                        }
+                        console.log('✅ Config loaded:', data);
                     })
-                    .catch(e => console.error('❌ Ошибка загрузки моделей:', e));
+                    .catch(e => console.error('❌ Error loading config:', e));
             },
 
             loadFields() {
@@ -173,13 +180,13 @@
                     return;
                 }
 
-                fetch(`/api/fields?modelName=${encodeURIComponent(this.selectedModel)}`)
+                fetch(`/api/config/fields?modelName=${encodeURIComponent(this.selectedModel)}`)
                     .then(r => r.json())
                     .then(data => {
                         this.fields = data;
-                        console.log('✅ Поля загружены для модели:', this.selectedModel, this.fields);
+                        console.log('✅ Fields loaded for model:', this.selectedModel);
                     })
-                    .catch(e => console.error('❌ Ошибка загрузки полей:', e));
+                    .catch(e => console.error('❌ Error loading fields:', e));
             },
 
             isConfigComplete() {
@@ -203,16 +210,18 @@
 
             saveConfig() {
                 if (!this.isConfigComplete()) {
-                    alert('Пожалуйста, заполните все обязательные поля!');
+                    alert('Please fill in all required fields!');
                     return;
                 }
 
                 const payload = {
-                    defaultDeck: this.selectedDeck,
-                    defaultModel: this.selectedModel,
+                    deck: this.selectedDeck,
+                    model: this.selectedModel,
                     wordField: this.wordField,
                     translationField: this.translationField,
-                    extraField: this.extraField
+                    extraField: this.extraField,
+                    sessionCardsLimit: parseInt(this.sessionCardsLimit) || 10,
+                    language: this.selectedLanguage
                 };
 
                 fetch('/api/config/save', {
@@ -222,11 +231,12 @@
                 })
                 .then(r => r.json())
                 .then(() => {
+                    this.hasSavedConfig = true;
                     window.location.href = '/menu';
                 })
                 .catch(e => {
-                    alert('Ошибка сохранения настроек');
-                    console.error('❌ Ошибка:', e);
+                    alert('Error saving settings');
+                    console.error('❌ Error:', e);
                 });
             }
         }

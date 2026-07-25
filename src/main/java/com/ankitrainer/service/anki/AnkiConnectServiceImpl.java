@@ -1,9 +1,8 @@
-package com.ankitrainer.service.impl;
+package com.ankitrainer.service.anki;
 
 import com.ankitrainer.ankiconnect.AnkiConnectClient;
 import com.ankitrainer.language.LanguageAnalyzer;
 import com.ankitrainer.model.CardDto;
-import com.ankitrainer.service.AnkiConnectService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;

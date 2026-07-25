@@ -1,4 +1,4 @@
-package com.ankitrainer.config;
+package com.ankitrainer.springconfig;
 
 import com.ankitrainer.language.LanguageAnalyzer;
 import com.ankitrainer.language.japanese.JapaneseAnalyzer;

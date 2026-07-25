@@ -12,12 +12,10 @@ import lombok.NoArgsConstructor;
 public class CardDto {
 
     private Long noteId;
-
     private String word;
-
     private String translation;
-
     private String extra;
-
     private String modelName;
+
+    private String expectedAnswer;
 }

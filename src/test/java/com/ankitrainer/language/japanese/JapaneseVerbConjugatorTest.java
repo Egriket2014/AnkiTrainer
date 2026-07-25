@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-class JapaneseConjugatorTest {
-    private final JapaneseConjugator conjugator = new JapaneseConjugator();
+class JapaneseVerbConjugatorTest {
+    private final JapaneseVerbConjugator conjugator = new JapaneseVerbConjugator();
 
     @Test
     void testIchidanConjugations() {
@@ -37,21 +37,18 @@ class JapaneseConjugatorTest {
 
     @Test
     void testIrregularVerbs() {
-        // する
         assertThat(conjugator.conjugate("する", "te")).isEqualTo("して");
         assertThat(conjugator.conjugate("する", "past")).isEqualTo("した");
         assertThat(conjugator.conjugate("する", "past_polite")).isEqualTo("しました");
         assertThat(conjugator.conjugate("する", "negative")).isEqualTo("しない");
         assertThat(conjugator.conjugate("する", "negative_polite")).isEqualTo("しません");
 
-        // 来る
         assertThat(conjugator.conjugate("来る", "te")).isEqualTo("来て");
         assertThat(conjugator.conjugate("来る", "past")).isEqualTo("来た");
         assertThat(conjugator.conjugate("来る", "past_polite")).isEqualTo("来ました");
         assertThat(conjugator.conjugate("来る", "negative")).isEqualTo("来ない");
         assertThat(conjugator.conjugate("来る", "negative_polite")).isEqualTo("来ません");
 
-        // 行く — специальное исключение
         assertThat(conjugator.conjugate("行く", "te")).isEqualTo("行って");
         assertThat(conjugator.conjugate("行く", "past")).isEqualTo("行った");
         assertThat(conjugator.conjugate("行く", "past_polite")).isEqualTo("行きました");
@@ -61,7 +58,6 @@ class JapaneseConjugatorTest {
 
     @Test
     void testGodanExceptions() {
-        // 要る — исключение из 一段, на самом деле 五段
         assertThat(conjugator.conjugate("要る", "te")).isEqualTo("要って");
         assertThat(conjugator.conjugate("要る", "past")).isEqualTo("要った");
         assertThat(conjugator.conjugate("要る", "negative")).isEqualTo("要らない");
@@ -78,7 +74,7 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("読む", "te")).isEqualTo("読んで");
         assertThat(conjugator.conjugate("泳ぐ", "te")).isEqualTo("泳いで");
         assertThat(conjugator.conjugate("死ぬ", "te")).isEqualTo("死んで");
-        assertThat(conjugator.conjugate("行く", "te")).isEqualTo("行って"); // исключение!
+        assertThat(conjugator.conjugate("行く", "te")).isEqualTo("行って");
         assertThat(conjugator.conjugate("切る", "te")).isEqualTo("切って");
         assertThat(conjugator.conjugate("帰る", "te")).isEqualTo("帰って");
         assertThat(conjugator.conjugate("走る", "te")).isEqualTo("走って");
@@ -106,8 +102,7 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("来る", "te")).isEqualTo("来て");
     }
 
-    // ---------- Вежливая форма (polite) ----------
-
+    
     @Test
     void testPoliteForm() {
         assertThat(conjugator.conjugate("話す", "polite")).isEqualTo("話します");
@@ -122,8 +117,7 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("来る", "polite")).isEqualTo("来ます");
     }
 
-    // ---------- Отрицательная форма (negative) ----------
-
+    
     @Test
     void testNegativeForm() {
         assertThat(conjugator.conjugate("話す", "negative")).isEqualTo("話さない");
@@ -138,8 +132,7 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("来る", "negative")).isEqualTo("来ない");
     }
 
-    // ---------- Отрицательная вежливая форма (negative_polite) ----------
-
+    
     @Test
     void testNegativePoliteForm() {
         assertThat(conjugator.conjugate("話す", "negative_polite")).isEqualTo("話しません");
@@ -154,8 +147,7 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("来る", "negative_polite")).isEqualTo("来ません");
     }
 
-    // ---------- Прошедшее время (past) ----------
-
+    
     @Test
     void testPastForm() {
         assertThat(conjugator.conjugate("話す", "past")).isEqualTo("話した");
@@ -170,8 +162,7 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("来る", "past")).isEqualTo("来た");
     }
 
-    // ---------- Прошедшее время вежливое (past_polite) ----------
-
+    
     @Test
     void testPastPoliteForm() {
         assertThat(conjugator.conjugate("話す", "past_polite")).isEqualTo("話しました");
@@ -186,8 +177,7 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("来る", "past_polite")).isEqualTo("来ました");
     }
 
-    // ---------- Прошедшее время отрицательное (past_negative) ----------
-
+    
     @Test
     void testPastNegativeForm() {
         assertThat(conjugator.conjugate("話す", "past_negative")).isEqualTo("話さなかった");
@@ -202,8 +192,7 @@ class JapaneseConjugatorTest {
         assertThat(conjugator.conjugate("来る", "past_negative")).isEqualTo("来なかった");
     }
 
-    // ---------- Прошедшее время отрицательное вежливое (past_negative_polite) ----------
-
+    
     @Test
     void testPastNegativePoliteForm() {
         assertThat(conjugator.conjugate("話す", "past_negative_polite")).isEqualTo("話しませんでした");

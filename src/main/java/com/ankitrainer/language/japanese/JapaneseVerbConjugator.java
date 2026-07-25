@@ -1,5 +1,8 @@
 package com.ankitrainer.language.japanese;
 
+import com.ankitrainer.language.Conjugator;
+import com.ankitrainer.util.Constants;
+import com.ankitrainer.util.enums.JapaneseVerbFormLabelEnum;
 import com.atilika.kuromoji.ipadic.Token;
 import com.atilika.kuromoji.ipadic.Tokenizer;
 import org.slf4j.Logger;
@@ -8,22 +11,20 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
-public class JapaneseConjugator {
+public class JapaneseVerbConjugator implements Conjugator {
 
-    private static final Logger log = LoggerFactory.getLogger(JapaneseConjugator.class);
+    private static final Logger log = LoggerFactory.getLogger(JapaneseVerbConjugator.class);
 
     private final Tokenizer tokenizer = new Tokenizer.Builder().build();
 
-    /**
-     * Conjugates a verb into the specified form.
-     *
-     * @param verb            the verb in dictionary form (e.g., "食べる", "行く")
-     * @param conjugationType the type of conjugation ("te", "polite", "negative", "negative_polite", "past",
-     *                        "past_polite", "past_negative", "past_negative_polite")
-     * @return the conjugated form, or null if conjugation fails
-     */
+    private static final String LANGUAGE = Constants.JAPANESE;
+    private static final String PART_OF_SPEECH = Constants.VERB;
+    private static final Set<String> CONJUGATION_TYPES = JapaneseVerbFormLabelEnum.getKeys();
+
+    @Override
     public String conjugate(String verb, String conjugationType) {
         if (verb == null || verb.isEmpty() || conjugationType == null) {
             return null;
@@ -56,6 +57,21 @@ public class JapaneseConjugator {
                 yield null;
             }
         };
+    }
+
+    @Override
+    public String getLanguage() {
+        return LANGUAGE;
+    }
+
+    @Override
+    public String getPartOfSpeech() {
+        return PART_OF_SPEECH;
+    }
+
+    @Override
+    public Set<String> getSupportedConjugationTypes() {
+        return CONJUGATION_TYPES;
     }
 
     /*

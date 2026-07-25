@@ -1,7 +1,7 @@
 package com.ankitrainer.service.impl;
 
 import com.ankitrainer.model.CardDto;
-import com.ankitrainer.service.AnkiConnectService;
+import com.ankitrainer.service.anki.AnkiConnectService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

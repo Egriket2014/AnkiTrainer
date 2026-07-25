@@ -1,8 +1,11 @@
-package com.ankitrainer.config;
+package com.ankitrainer.config.model;
 
+import com.ankitrainer.util.Constants;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import static com.ankitrainer.util.Constants.DEFAULT_SESSION_CARDS_LIMIT;
 
 /**
  * Configuration object for the trainer.
@@ -12,16 +15,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ConfigData {
     
-    private String defaultDeck = "";
-    private String defaultModel = "";
+    private String deck = "";
+    private String model = "";
     private String wordField = "";
     private String translationField = "";
     private String extraField = "";
+    private Integer sessionCardsLimit = DEFAULT_SESSION_CARDS_LIMIT;
+    private String language = Constants.DEFAULT_LANGUAGE;
 
     @JsonIgnore
     public boolean isComplete() {
-        return !defaultDeck.isEmpty() &&
-                !defaultModel.isEmpty() &&
+        return !deck.isEmpty() &&
+                !model.isEmpty() &&
                 !wordField.isEmpty() &&
                 !translationField.isEmpty();
     }
@@ -29,11 +34,13 @@ public class ConfigData {
     @Override
     public String toString() {
         return "ConfigData{" +
-                "deck='" + defaultDeck + '\'' +
-                ", model='" + defaultModel + '\'' +
+                "deck='" + deck + '\'' +
+                ", model='" + model + '\'' +
                 ", wordField='" + wordField + '\'' +
                 ", translationField='" + translationField + '\'' +
                 ", extraField='" + extraField + '\'' +
+                ", sessionCardsLimit='" + sessionCardsLimit + '\'' +
+                ", language='" + language + '\'' +
                 '}';
     }
 }
