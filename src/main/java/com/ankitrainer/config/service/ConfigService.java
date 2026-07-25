@@ -29,7 +29,6 @@ public class ConfigService {
     }
 
     public ConfigData loadConfig() {
-        log.info("CURRENTCONFIG={},", currentConfig);
         if (currentConfig != null) {
             return currentConfig;
         }

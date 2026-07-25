@@ -1,4 +1,4 @@
-package com.ankitrainer.ui;
+package com.ankitrainer.controller.api;
 
 import com.ankitrainer.service.CardService;
 import lombok.RequiredArgsConstructor;

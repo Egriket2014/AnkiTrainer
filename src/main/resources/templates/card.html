@@ -4,13 +4,51 @@
   <title>Anki Trainer - Card</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    .translation-content ul {
+        list-style-type: none !important;
+        padding-left: 0 !important;
+        margin: 0.5rem 0 !important;
+        text-align: left !important;
+    }
+    .translation-content li {
+        display: list-item !important;
+        margin: 0.2rem 0 !important;
+        text-align: left !important;
+        padding-left: 0 !important;
+    }
+    .translation-content li::before {
+        content: "• ";
+        color: #6b7280;
+        font-size: 1.2rem;
+    }
+    .translation-content ol {
+        list-style-type: none !important;
+        padding-left: 0 !important;
+        margin: 0.5rem 0 !important;
+        text-align: left !important;
+        counter-reset: item;
+    }
+    .translation-content ol li {
+        display: list-item !important;
+        margin: 0.2rem 0 !important;
+        text-align: left !important;
+        padding-left: 0 !important;
+    }
+    .translation-content ol li::before {
+        content: counter(item) ". ";
+        counter-increment: item;
+        color: #6b7280;
+    }
+    .translation-content div {
+        text-align: left !important;
+    }
+  </style>
 </head>
 <body>
-<div class="container mx-auto p-8 max-w-2xl"
-     x-data="card()"
-     x-init="init()">
+<div class="container mx-auto p-8 max-w-2xl" x-data="card()" x-init="init()">
 
-  <!-- Header with Back only (always visible) -->
+  <!-- Header with Back only -->
   <div class="mb-8">
     <a href="#" @click.prevent="saveAndGoBack()"
        class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition inline-block">
@@ -23,7 +61,7 @@
     <p class="text-gray-500">Loading card...</p>
   </div>
 
-  <!-- Card content (hidden when complete) -->
+  <!-- Card content -->
   <div x-show="!loading && !complete" class="max-w-lg mx-auto">
     <!-- Word -->
     <div class="text-center mb-6 mt-16">
@@ -84,13 +122,13 @@
         <span x-show="!showTranslation">▶</span>
         Translation
       </button>
-      <div x-show="showTranslation" class="mt-1">
-        <p class="text-xl text-gray-600" x-text="currentCard.translation"></p>
+      <div x-show="showTranslation" class="mt-1 translation-content">
+        <div class="text-xl text-gray-600" x-html="currentCard.translation"></div>
       </div>
     </div>
   </div>
 
-  <!-- Completion message - centered on screen, only Back button visible -->
+  <!-- Completion message -->
   <div x-show="complete" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
     <div class="text-center pointer-events-auto">
       <div class="text-6xl mb-4">🎉</div>
@@ -101,7 +139,6 @@
 </div>
 
 <script>
-  // Глобальная функция для вызова из Java (для Enter в десктопном приложении)
   window.handleEnterFromJava = function() {
       console.log('🔹 Enter from Java!');
       if (window.cardComponent && window.cardComponent.handleEnter) {
@@ -128,8 +165,12 @@
           partOfSpeech: '',
           conjugationType: '',
           conjugationTypeLabel: '',
+          initialized: false,
 
           init() {
+              if (this.initialized) return;
+              this.initialized = true;
+
               console.log('🔹 Card initialized');
               window.cardComponent = this;
 

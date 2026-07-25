@@ -1,4 +1,4 @@
-package com.ankitrainer.ui;
+package com.ankitrainer.controller.api;
 
 import com.ankitrainer.config.model.ConfigData;
 import com.ankitrainer.config.service.ConfigService;

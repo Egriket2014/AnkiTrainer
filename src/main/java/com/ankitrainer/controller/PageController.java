@@ -1,4 +1,4 @@
-package com.ankitrainer.ui;
+package com.ankitrainer.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
