@@ -6,14 +6,18 @@ import com.ankitrainer.language.Conjugator;
 import com.ankitrainer.model.CardDto;
 import com.ankitrainer.service.anki.AnkiConnectService;
 import com.ankitrainer.service.factory.ConjugatorFactory;
+import io.github.openspacedrepetition.Card;
+import io.github.openspacedrepetition.CardAndReviewLog;
+import io.github.openspacedrepetition.Rating;
+import io.github.openspacedrepetition.Scheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,14 +31,15 @@ public class CardService {
     private ConfigService configService;
     @Autowired
     private AnkiConnectService ankiConnectService;
+    @Autowired
+    private Scheduler scheduler;
 
     // Session
     private String currentConjugationType;
     private String currentPartOfSpeech;
     private Conjugator currentConjugator;
     private String currentLanguage;
-    private List<CardDto> currentCards = new ArrayList<>();
-    private int currentIndex = 0;
+    private PriorityQueue<CardDto> currentCards = new PriorityQueue<>(CardDto.BY_DUE);
 
     /**
      * Prepares a shuffled, limited list of cards.
@@ -75,7 +80,7 @@ public class CardService {
                 .limit(config.getSessionCardsLimit())
                 .collect(Collectors.toList());
 
-        // Cashing right answers
+        // Cashing right answers + creating srs card
         for (CardDto card : selectedCards) {
             String expected = currentConjugator.conjugate(card.getWord(), conjugationType);
             if (expected == null) {
@@ -85,12 +90,12 @@ public class CardService {
                 );
             }
             card.setExpectedAnswer(expected);
+            card.setSrsCard(Card.builder().build());
         }
 
         // Reset session
         this.currentCards.clear();
         this.currentCards.addAll(selectedCards);
-        this.currentIndex = 0;
 
         log.info("Prepared {} {} cards for language: {}, conjugation: {}.",
                 selectedCards.size(), partOfSpeech, currentLanguage, currentConjugationType);
@@ -102,10 +107,11 @@ public class CardService {
      * @return null if session is complete
      */
     public CardDto getCurrentCard() {
+        log.debug("Current cards queue size {}", currentCards.size());
         if (isComplete()) {
             return null;
         } else {
-            return currentCards.get(currentIndex);
+            return currentCards.peek();
         }
     }
 
@@ -115,7 +121,7 @@ public class CardService {
      * @return true if session is complete
      */
     public boolean isComplete() {
-        return currentCards.isEmpty() || currentIndex >= currentCards.size();
+        return currentCards.isEmpty();
     }
 
     /**
@@ -125,18 +131,34 @@ public class CardService {
      * @return true if the answer is correct, false otherwise
      */
     public boolean checkAnswer(String userAnswer) {
-        CardDto card = getCurrentCard();
-        if (card == null || userAnswer == null || currentConjugator == null || currentPartOfSpeech == null) {
+        CardDto card = currentCards.poll();
+        if (card == null
+            || userAnswer == null
+            || currentConjugator == null
+            || currentPartOfSpeech == null
+            || card.getSrsCard() == null
+        ) {
             throw new IllegalStateException(
-                    "Cannot check answer: missing card, answer, currentConjugator or currentPartOfSpeech"
+                    "Cannot check answer: missing card, srsCard, answer, currentConjugator or currentPartOfSpeech"
             );
         }
 
         boolean isCorrect = card.getExpectedAnswer().equals(userAnswer.trim());
-        log.debug("Check result. Word: {}, Expected: {}, User: {}, Result: {}",
-                card.getWord(), card.getExpectedAnswer(), userAnswer.trim(), isCorrect);
 
-        currentIndex++;
+        // SRS update
+        CardAndReviewLog review = scheduler.reviewCard(card.getSrsCard(), isCorrect ? Rating.GOOD : Rating.AGAIN);
+        card.setSrsCard(review.card());
+        log.debug("SRS updated. Word: {}, State: {}, Due: {}",
+                card.getWord(), card.getSrsCard().getState(), card.getSrsCard().getDue());
+
+        if (isCorrect) {
+            log.debug("Correct! Word: {}, Expected: {}, UserAnswer: {}. Card removed from queue.",
+                    card.getWord(), card.getExpectedAnswer(), userAnswer);
+        } else {
+            currentCards.offer(card);
+            log.debug("Incorrect! Word: {}, Expected: {}, UserAnswer: {}. Returned to queue.",
+                    card.getWord(), card.getExpectedAnswer(), userAnswer);
+        }
 
         return isCorrect;
     }
@@ -157,6 +179,5 @@ public class CardService {
         currentLanguage = null;
         currentConjugator = null;
         currentCards.clear();
-        currentIndex = 0;
     }
 }
