@@ -15,7 +15,7 @@ public class HtmlUtils {
             return "";
         }
         String cleanedHtml = html.replaceAll("<[^>]+>", "").trim();
-        log.debug("HTML cleaned: '{}' → '{}'", html, cleanedHtml);
+        log.trace("HTML cleaned: '{}' → '{}'", html, cleanedHtml);
         return cleanedHtml;
     }
 }

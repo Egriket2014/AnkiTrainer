@@ -1,24 +1,24 @@
 package com.ankitrainer.service;
 
-import com.ankitrainer.config.model.ConfigData;
-import com.ankitrainer.config.service.ConfigService;
-import com.ankitrainer.language.Conjugator;
-import com.ankitrainer.model.CardDto;
+import com.ankitrainer.entity.CardEntity;
+import com.ankitrainer.entity.CardSrsEntity;
+import com.ankitrainer.entity.DeckConfigEntity;
+import com.ankitrainer.language.enums.ConjugationType;
+import com.ankitrainer.repository.CardRepository;
+import com.ankitrainer.repository.CardSrsRepository;
 import com.ankitrainer.service.anki.AnkiConnectService;
-import com.ankitrainer.service.factory.ConjugatorFactory;
+import com.ankitrainer.service.language.LanguageService;
 import io.github.openspacedrepetition.Card;
-import io.github.openspacedrepetition.CardAndReviewLog;
-import io.github.openspacedrepetition.Rating;
-import io.github.openspacedrepetition.Scheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.PriorityQueue;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 @Service
 public class CardService {
@@ -26,158 +26,117 @@ public class CardService {
     private static final Logger log = LoggerFactory.getLogger(CardService.class);
 
     @Autowired
-    private ConjugatorFactory conjugatorFactory;
+    private CardRepository cardRepository;
     @Autowired
-    private ConfigService configService;
+    private CardSrsRepository cardSrsRepository;
     @Autowired
     private AnkiConnectService ankiConnectService;
     @Autowired
-    private Scheduler scheduler;
+    private LanguageService languageService;
 
-    // Session
-    private String currentConjugationType;
-    private String currentPartOfSpeech;
-    private Conjugator currentConjugator;
-    private String currentLanguage;
-    private PriorityQueue<CardDto> currentCards = new PriorityQueue<>(CardDto.BY_DUE);
+    @Transactional
+    public void createCardsFromAnki(DeckConfigEntity deckConfig) {
+        log.info("Creating cards for deck: {}", deckConfig.getDeckName());
+        List<CardEntity> cardsFromAnki = ankiConnectService.getSupportedCardsForDeck(deckConfig);
 
-    /**
-     * Prepares a shuffled, limited list of cards.
-     *
-     * @param partOfSpeech           the part of speech (e.g., "verb", "adjective")
-     * @param conjugationType        the conjugation type (e.g., "past", "te")
-     * @throws IllegalStateException if configuration is incomplete
-     * @throws RuntimeException      if any word cannot be conjugated
-     */
-    public void prepareCards(String partOfSpeech, String conjugationType) {
-        log.info("Preparing cards for training (partOfSpeech: {}, conjugationType: {})...", partOfSpeech, conjugationType);
+        cardsFromAnki.forEach(card -> createCardWithConjugations(card, deckConfig));
 
-        ConfigData config = configService.loadConfig();
-        if (config == null || !config.isComplete()) {
-            throw new IllegalStateException("Configuration is incomplete. Please set up your settings.");
-        }
+        log.info("Finished creating cards for deck: {}", deckConfig.getDeckName());
+    }
 
-        this.currentPartOfSpeech = partOfSpeech.trim().toLowerCase();
-        this.currentConjugationType = conjugationType.trim().toLowerCase();
-        this.currentLanguage = config.getLanguage();
-        this.currentConjugator = conjugatorFactory.getConjugator(currentLanguage, partOfSpeech);
-
-        List<CardDto> allWords = ankiConnectService.getVerbsByModelAndFields(
-                config.getDeck(),
-                config.getModel(),
-                config.getWordField(),
-                config.getTranslationField(),
-                config.getExtraField()
-        );
-
-        if (allWords.isEmpty()) {
-            log.warn("No words found in the selected deck. Config: {}", config);
+    @Transactional
+    private void createCardWithConjugations(CardEntity card, DeckConfigEntity deckConfig) {
+        if (cardRepository.existsByNoteId(card.getNoteId())) {
+            log.warn("Card with noteId {} already exists, skipping creation", card.getNoteId());
             return;
         }
 
-        Collections.shuffle(allWords);
-        List<CardDto> selectedCards = allWords.stream()
-                .limit(config.getSessionCardsLimit())
-                .collect(Collectors.toList());
+        card = cardRepository.saveAndFlush(card);
+        log.debug("Created card {}. id={} noteId={}", card.getWord(), card.getId(), card.getNoteId());
 
-        // Cashing right answers + creating srs card
-        for (CardDto card : selectedCards) {
-            String expected = currentConjugator.conjugate(card.getWord(), conjugationType);
-            if (expected == null) {
-                throw new RuntimeException(
-                        "Could not conjugate word '" + card.getWord() + "' " +
-                                "for language " + currentLanguage + " and conjugation type " + currentConjugationType
+        Set<ConjugationType> conjugationTypes = languageService.getSupportedConjugationTypes(
+                deckConfig.getLanguage(),
+                card.getPartOfSpeech()
+        );
+
+        List<CardSrsEntity> srsEntities = new ArrayList<>();
+        for (ConjugationType conjugationType : conjugationTypes) {
+            try {
+                String conjugatedWord = languageService.conjugate(
+                        card.getWord(),
+                        deckConfig.getLanguage(),
+                        card.getPartOfSpeech(),
+                        conjugationType
                 );
+
+                if (conjugatedWord == null || conjugatedWord.isBlank()) {
+                    log.warn("Failed to conjugate word '{}' for type: {}", card.getWord(), conjugationType.getKey());
+                    continue;
+                }
+
+                CardSrsEntity srsEntity = CardSrsEntity.builder()
+                        .card(card)
+                        .conjugationType(conjugationType)
+                        .answer(conjugatedWord)
+                        .srsCard(Card.builder().build())
+                        .build();
+
+                srsEntities.add(srsEntity);
+                log.debug("Created SRS for card: {} -> {}, conjugation: {}",
+                        card.getWord(), srsEntity.getAnswer(), conjugationType.getKey());
+
+            } catch (Exception e) {
+                log.error("Failed to conjugate word '{}' for type: {}", card.getWord(), conjugationType.getKey(), e);
             }
-            card.setExpectedAnswer(expected);
-            card.setSrsCard(Card.builder().build());
         }
 
-        // Reset session
-        this.currentCards.clear();
-        this.currentCards.addAll(selectedCards);
-
-        log.info("Prepared {} {} cards for language: {}, conjugation: {}.",
-                selectedCards.size(), partOfSpeech, currentLanguage, currentConjugationType);
-    }
-
-    /**
-     * Returns the current card.
-     *
-     * @return null if session is complete
-     */
-    public CardDto getCurrentCard() {
-        log.debug("Current cards queue size {}", currentCards.size());
-        if (isComplete()) {
-            return null;
-        } else {
-            return currentCards.peek();
+        if (!srsEntities.isEmpty()) {
+            cardSrsRepository.saveAll(srsEntities);
+            log.debug("Created {} conjugations for card: {}", srsEntities.size(), card.getWord());
         }
     }
 
-    /**
-     * Checks if the training session is complete.
-     *
-     * @return true if session is complete
-     */
-    public boolean isComplete() {
-        return currentCards.isEmpty();
+    public List<CardSrsEntity> findSeenTodayNewCards(String deckName, ConjugationType conjugationType, LocalDate today) {
+        return cardSrsRepository.findSeenTodayNewCards(
+                deckName,
+                conjugationType.getKey(),
+                today.toString()
+        );
     }
 
-    /**
-     * Verifies the user's answer against the correct conjugation for current card.
-     *
-     * @param userAnswer   the user's input
-     * @return true if the answer is correct, false otherwise
-     */
-    public boolean checkAnswer(String userAnswer) {
-        CardDto card = currentCards.poll();
-        if (card == null
-            || userAnswer == null
-            || currentConjugator == null
-            || currentPartOfSpeech == null
-            || card.getSrsCard() == null
-        ) {
-            throw new IllegalStateException(
-                    "Cannot check answer: missing card, srsCard, answer, currentConjugator or currentPartOfSpeech"
-            );
-        }
-
-        boolean isCorrect = card.getExpectedAnswer().equals(userAnswer.trim());
-
-        // SRS update
-        CardAndReviewLog review = scheduler.reviewCard(card.getSrsCard(), isCorrect ? Rating.GOOD : Rating.AGAIN);
-        card.setSrsCard(review.card());
-        log.debug("SRS updated. Word: {}, State: {}, Due: {}",
-                card.getWord(), card.getSrsCard().getState(), card.getSrsCard().getDue());
-
-        if (isCorrect) {
-            log.debug("Correct! Word: {}, Expected: {}, UserAnswer: {}. Card removed from queue.",
-                    card.getWord(), card.getExpectedAnswer(), userAnswer);
-        } else {
-            currentCards.offer(card);
-            log.debug("Incorrect! Word: {}, Expected: {}, UserAnswer: {}. Returned to queue.",
-                    card.getWord(), card.getExpectedAnswer(), userAnswer);
-        }
-
-        return isCorrect;
+    public List<CardSrsEntity> findNewCardsForToday(String deckName, ConjugationType conjugationType, int limit) {
+        return cardSrsRepository.findNewCardsForToday(
+                deckName,
+                conjugationType.getKey(),
+                limit
+        );
     }
 
-    /**
-     * Saves the results of the current session.
-     */
-    public void saveResults() {
-        log.info("Saving results for current session...");
-        // TODO Update cards statistics in DB
-
-        clearSession();
+    public List<CardSrsEntity> findSeenNotTodayNewCards(String deckName, ConjugationType conjugationType, LocalDate today) {
+        return cardSrsRepository.findSeenNotTodayNewCards(
+                deckName,
+                conjugationType.getKey(),
+                today.toString()
+        );
     }
 
-    public void clearSession() {
-        currentConjugationType = null;
-        currentPartOfSpeech = null;
-        currentLanguage = null;
-        currentConjugator = null;
-        currentCards.clear();
+    public List<CardSrsEntity> findRelearningCards(String deckName, ConjugationType conjugationType) {
+        return cardSrsRepository.findRelearningCards(
+                deckName,
+                conjugationType.getKey()
+        );
+    }
+
+    public List<CardSrsEntity> findReviewCards(String deckName, ConjugationType conjugationType, int limit) {
+        return cardSrsRepository.findReviewCards(
+                deckName,
+                conjugationType.getKey(),
+                limit
+        );
+    }
+
+    @Transactional
+    public void saveCardSrs(CardSrsEntity entity) {
+        cardSrsRepository.save(entity);
     }
 }

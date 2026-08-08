@@ -1,6 +1,8 @@
 package com.ankitrainer.service.impl;
 
-import com.ankitrainer.model.CardDto;
+import com.ankitrainer.entity.CardEntity;
+import com.ankitrainer.entity.DeckConfigEntity;
+import com.ankitrainer.language.enums.Language;
 import com.ankitrainer.service.anki.AnkiConnectService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -34,13 +36,16 @@ class AnkiConnectServiceImplTest {
     }
 
     @Test
-    void getVerbsByModelAndFields() {
-        List<CardDto> list = ankiConnectService.getVerbsByModelAndFields(
-                "ЯПОНСКИЙ",
-                "Japanese Sentence Card (с обратной карточкой)",
-                "Word",
-                "Meaning",
-                "Reading"
+    void getSupportedCardsForDeck() {
+        List<CardEntity> list = ankiConnectService.getSupportedCardsForDeck(
+                DeckConfigEntity.builder()
+                        .deckName("ЯПОНСКИЙ")
+                        .modelName("Japanese Sentence Card (с обратной карточкой)")
+                        .wordField("Word")
+                        .translationField("Meaning")
+                        .extraField("Reading")
+                        .language(Language.JAPANESE)
+                        .build()
         );
         Assertions.assertFalse(list.isEmpty());
     }

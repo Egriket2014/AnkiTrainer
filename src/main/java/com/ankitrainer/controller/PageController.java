@@ -2,6 +2,7 @@ package com.ankitrainer.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 @Controller
 public class PageController {
@@ -11,13 +12,28 @@ public class PageController {
         return "menu";
     }
 
-    @GetMapping("/config")
-    public String configPage() {
-        return "config";
+    @GetMapping("/config/new")
+    public String newConfigPage() {
+        return "config-new";
     }
 
-    @GetMapping("/card")
-    public String cardPage() {
-        return "card";
+    @GetMapping("/config/{id}")
+    public String editConfigPage(@PathVariable Long id) {
+        return "config-edit";
+    }
+
+    @GetMapping("/select-part")
+    public String selectPartPage() {
+        return "select-part";
+    }
+
+    @GetMapping("/select-conjugation")
+    public String selectConjugationPage() {
+        return "select-conjugation";
+    }
+
+    @GetMapping("/session")
+    public String sessionPage() {
+        return "session";
     }
 }

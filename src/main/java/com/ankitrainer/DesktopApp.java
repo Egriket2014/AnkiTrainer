@@ -1,6 +1,5 @@
 package com.ankitrainer;
 
-import com.ankitrainer.config.service.ConfigService;
 import javafx.application.Application;
 import javafx.concurrent.Worker;
 import javafx.scene.Scene;
@@ -27,7 +26,6 @@ public class DesktopApp extends Application {
     public void start(Stage stage) {
         WebView webView = new WebView();
         webView.getEngine().setJavaScriptEnabled(true);
-        ConfigService configService = springContext.getBean(ConfigService.class);
 
         webView.getEngine().getLoadWorker().stateProperty().addListener((obs, old, newState) -> {
             if (newState == Worker.State.SUCCEEDED) {
@@ -41,13 +39,7 @@ public class DesktopApp extends Application {
             System.out.println("🔹 JS Alert: " + event.getData());
         });
 
-        String startUrl;
-        if (configService.hasSavedConfig()) {
-            startUrl = "http://localhost:8080/menu";
-        } else {
-            startUrl = "http://localhost:8080/config";
-        }
-        webView.getEngine().load(startUrl);
+        webView.getEngine().load("http://localhost:8080/menu");
 
         Scene scene = new Scene(webView, 900, 700);
         scene.setOnKeyPressed(event -> {

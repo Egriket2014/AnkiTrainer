@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Anki Trainer - Edit Deck</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+<div class="container mx-auto p-8 max-w-2xl" x-data="configEdit()" x-init="init()">
+
+  <div class="flex justify-between items-center mb-8">
+    <a href="/menu" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition">
+      ← Back
+    </a>
+    <h1 class="text-2xl font-bold">Deck settings</h1>
+    <div class="w-20"></div>
+  </div>
+
+  <div class="border p-6 rounded-lg bg-white shadow-sm">
+
+    <div class="mb-4">
+      <label class="block font-bold mb-1 text-gray-600">Deck Name:</label>
+      <p class="text-lg font-medium" x-text="deckName"></p>
+    </div>
+
+    <div class="mb-4">
+      <label class="block font-bold mb-1 text-gray-600">Model:</label>
+      <p class="text-lg" x-text="modelName"></p>
+    </div>
+
+    <div class="mb-4">
+      <label class="block font-bold mb-1 text-gray-600">Language:</label>
+      <p class="text-lg capitalize" x-text="language"></p>
+    </div>
+
+    <div class="mb-4">
+      <label class="block font-bold mb-1 text-gray-600">Word Field:</label>
+      <p class="text-lg" x-text="wordField"></p>
+    </div>
+
+    <div class="mb-4">
+      <label class="block font-bold mb-1 text-gray-600">Translation Field:</label>
+      <p class="text-lg" x-text="translationField"></p>
+    </div>
+
+    <div class="mb-4" x-show="extraField">
+      <label class="block font-bold mb-1 text-gray-600">Extra Field:</label>
+      <p class="text-lg" x-text="extraField"></p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div>
+        <label class="block font-bold mb-1">Review limit per day:</label>
+        <input type="number" x-model="reviewLimit" min="1" max="1000"
+               class="border p-2 w-full rounded">
+        <p x-show="reviewLimit < 1" class="text-red-500 text-sm mt-1">Must be at least 1</p>
+      </div>
+      <div>
+        <label class="block font-bold mb-1">New cards per day:</label>
+        <input type="number" x-model="newLimit" min="0" max="100"
+               class="border p-2 w-full rounded">
+        <p x-show="newLimit < 0" class="text-red-500 text-sm mt-1">Cannot be negative</p>
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <button @click="saveConfig()"
+              class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition"
+              :disabled="reviewLimit < 1 || newLimit < 0">
+        Save
+      </button>
+      <a href="/menu" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition">
+        Cancel
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  function configEdit() {
+      return {
+          deckId: null,
+          deckName: '',
+          modelName: '',
+          language: '',
+          wordField: '',
+          translationField: '',
+          extraField: '',
+          reviewLimit: 200,
+          newLimit: 5,
+          initialized: false,
+
+          init() {
+            if (this.initialized) return;
+            this.initialized = true;
+
+              const path = window.location.pathname;
+              const match = path.match(/\/config\/(\d+)/);
+              if (match) {
+                  this.deckId = parseInt(match[1]);
+              }
+
+              if (!this.deckId) {
+                  alert('Invalid deck ID');
+                  window.location.href = '/menu';
+                  return;
+              }
+
+              this.loadDeck();
+          },
+
+          loadDeck() {
+              fetch(`/api/deck-config/${this.deckId}`)
+                  .then(r => {
+                      if (!r.ok) throw new Error('Deck not found');
+                      return r.json();
+                  })
+                  .then(data => {
+                      this.deckName = data.deckName;
+                      this.modelName = data.modelName;
+                      this.language = data.language;
+                      this.wordField = data.wordField;
+                      this.translationField = data.translationField;
+                      this.extraField = data.extraField || '';
+                      this.reviewLimit = data.reviewLimit || 200;
+                      this.newLimit = data.newLimit || 5;
+                  })
+                  .catch(e => {
+                      alert('Error loading deck: ' + e.message);
+                      window.location.href = '/menu';
+                  });
+          },
+
+          saveConfig() {
+              if (this.reviewLimit < 1 || this.newLimit < 0) {
+                  alert('Please fix validation errors');
+                  return;
+              }
+
+              const payload = {
+                  id: this.deckId,
+                  reviewLimit: parseInt(this.reviewLimit) || 200,
+                  newLimit: parseInt(this.newLimit) || 5
+              };
+
+              fetch('/api/deck-config/update', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+              })
+              .then(r => {
+                  if (!r.ok) throw new Error('Failed to update deck');
+                  return r.json();
+              })
+              .then(() => {
+                  window.location.href = '/menu';
+              })
+              .catch(e => {
+                  alert('Error: ' + e.message);
+              });
+          }
+      }
+  }
+</script>
+</body>
+</html>

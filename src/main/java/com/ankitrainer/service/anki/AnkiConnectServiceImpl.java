@@ -1,8 +1,11 @@
 package com.ankitrainer.service.anki;
 
 import com.ankitrainer.ankiconnect.AnkiConnectClient;
-import com.ankitrainer.language.LanguageAnalyzer;
-import com.ankitrainer.model.CardDto;
+import com.ankitrainer.entity.CardEntity;
+import com.ankitrainer.entity.DeckConfigEntity;
+import com.ankitrainer.language.enums.Language;
+import com.ankitrainer.language.enums.PartOfSpeech;
+import com.ankitrainer.service.language.LanguageService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -10,7 +13,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -18,12 +23,10 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
 
     @Autowired
     private AnkiConnectClient client;
-
     @Autowired
     private ObjectMapper objectMapper;
-
     @Autowired
-    private LanguageAnalyzer languageAnalyzer;
+    private LanguageService languageService;
 
     private static final Logger log = LoggerFactory.getLogger(AnkiConnectServiceImpl.class);
 
@@ -73,13 +76,14 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
     }
 
     @Override
-    public List<CardDto> getVerbsByModelAndFields(
-            String deckName,
-            String modelName,
-            String wordFieldName,
-            String translationFieldName,
-            String extraFieldName
-    ) {
+    public List<CardEntity> getSupportedCardsForDeck(DeckConfigEntity deckConfig) {
+        String deckName = deckConfig.getDeckName();
+        String modelName = deckConfig.getModelName();
+        String wordFieldName = deckConfig.getWordField();
+        String translationFieldName = deckConfig.getTranslationField();
+        String extraFieldName = deckConfig.getExtraField();
+        Language language = deckConfig.getLanguage();
+
         JsonNode ankiResponseAllNotesIds = client.getNotesIdsForDeck(deckName);
         List<Long> allNoteIds = objectMapper.convertValue(
                 ankiResponseAllNotesIds.get("result"),
@@ -98,36 +102,54 @@ public class AnkiConnectServiceImpl implements AnkiConnectService {
                 objectMapper.getTypeFactory().constructCollectionType(List.class, JsonNode.class)
         );
 
-        return noteList.stream()
-                .filter(noteNode -> modelName.equals(noteNode.get("modelName").asText()))
-                .filter(noteNode -> {
-                    String word = extractFieldValue(noteNode.get("fields"), wordFieldName);
-                    return languageAnalyzer.isVerb(word);
-                })
-                .map(noteNode -> {
-                    JsonNode fieldsNode = noteNode.get("fields");
+        Set<PartOfSpeech> supportedPartsOfSpeech = languageService.getSupportedPartsOfSpeech(language);
+        List<CardEntity> result = new ArrayList<>();
 
-                    String word = extractFieldValue(fieldsNode, wordFieldName);
-                    log.debug("Mapping word {}", word);
-                    String translation = extractFieldValue(fieldsNode, translationFieldName);
-                    String extra = extraFieldName != null ? extractFieldValue(fieldsNode, extraFieldName) : "";
+        for (JsonNode noteNode : noteList) {
+            if (!modelName.equals(noteNode.get("modelName").asText())) {
+                continue;
+            }
 
-                    return CardDto.builder()
-                            .noteId(noteNode.get("noteId").asLong())
-                            .word(word)
-                            .translation(translation)
-                            .extra(extra)
-                            .modelName(noteNode.get("modelName").asText())
-                            .build();
-                })
-                .collect(Collectors.toList());
+            JsonNode fieldsNode = noteNode.get("fields");
+            String word = extractFieldValue(fieldsNode, wordFieldName);
+
+            if (word == null || word.isBlank()) {
+                continue;
+            }
+
+            PartOfSpeech partOfSpeech = languageService.detectPartOfSpeech(word, language);
+
+            if (partOfSpeech == null || !supportedPartsOfSpeech.contains(partOfSpeech)) {
+                continue;
+            }
+
+            String translation = extractFieldValue(fieldsNode, translationFieldName);
+            String extra = extraFieldName != null && !extraFieldName.isBlank()
+                    ? extractFieldValue(fieldsNode, extraFieldName)
+                    : null;
+            Long noteId = noteNode.get("noteId").asLong();
+
+            CardEntity card = CardEntity.builder()
+                    .noteId(noteId)
+                    .word(word)
+                    .translation(translation)
+                    .extra(extra)
+                    .partOfSpeech(partOfSpeech)
+                    .deckName(deckName)
+                    .build();
+
+            result.add(card);
+        }
+
+        log.info("Found {} supported cards in deck '{}'", result.size(), deckName);
+        return result;
     }
 
     private String extractFieldValue(JsonNode fieldsNode, String fieldName) {
         if (fieldsNode.has(fieldName) && fieldsNode.get(fieldName).has("value")) {
-            return fieldsNode.get(fieldName).get("value").asText();
-        } else {
-            return  "";
+            String value = fieldsNode.get(fieldName).get("value").asText();
+            return value != null ? value.trim() : null;
         }
+        return null;
     }
 }

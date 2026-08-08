@@ -1,7 +1,8 @@
 package com.ankitrainer.service.anki;
 
+import com.ankitrainer.entity.CardEntity;
+import com.ankitrainer.entity.DeckConfigEntity;
 import com.ankitrainer.exception.AnkiConnectException;
-import com.ankitrainer.model.CardDto;
 
 import java.util.List;
 
@@ -34,21 +35,11 @@ public interface AnkiConnectService {
 
     /**
      * Retrieves a list of cards (notes) from a specific deck, filtered by the note model,
-     * and extracts values from the selected fields.
+     * supported part of speech for language and extracts values from the selected fields.
      *
-     * @param deckName              the name of the Anki deck
-     * @param modelName             the name of the note model to filter by
-     * @param wordFieldName         the name of the field that contains the word
-     * @param translationFieldName  the name of the field that contains the translation
-     * @param extraFieldName        the name of an optional additional field.
-     * @return a list of CardDto
+     * @param deckConfig deck configuration(language, name, model and fields for select)
+     * @return a list of CardEntity
      * @throws AnkiConnectException if request to AnkiConnect fails
      */
-    List<CardDto> getVerbsByModelAndFields(
-            String deckName,
-            String modelName,
-            String wordFieldName,
-            String translationFieldName,
-            String extraFieldName
-    );
+    List<CardEntity> getSupportedCardsForDeck(DeckConfigEntity deckConfig);
 }

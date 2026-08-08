@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:x-bind="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Anki Trainer - Add Deck</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 12px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+<div class="container mx-auto p-8 max-w-2xl" x-data="configNew()" x-init="init()">
+
+    <div class="flex justify-between items-center mb-8">
+        <a href="/menu" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition">
+            ← Back
+        </a>
+        <h1 class="text-2xl font-bold">Add new deck</h1>
+        <div class="w-20"></div>
+    </div>
+
+    <div class="border p-6 rounded-lg bg-white shadow-sm">
+
+        <div x-show="!isLoading">
+            <div class="mb-4">
+                <label class="block font-bold mb-1">Language:</label>
+                <select x-model="selectedLanguage" class="border p-2 w-64 rounded">
+                    <option value="">-- Select language --</option>
+                    <template x-for="lang in supportedLanguages" :key="lang.key">
+                        <option x-bind:value="lang.key" x-text="lang.label"></option>
+                    </template>
+                </select>
+                <div x-show="loadingLanguages" class="text-sm text-gray-500 mt-1">
+                    Loading languages...
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block font-bold mb-1">Deck from Anki:</label>
+                <select x-model="selectedDeck" class="border p-2 w-64 rounded">
+                    <option value="">-- Select deck --</option>
+                    <template x-for="deck in ankiDecks" :key="deck">
+                        <option x-bind:value="deck" x-text="deck"></option>
+                    </template>
+                </select>
+                <div x-show="loadingDecks" class="text-sm text-gray-500 mt-1">
+                    Loading decks from Anki...
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block font-bold mb-1">Note type (Model):</label>
+                <select x-model="selectedModel" @change="onModelChange()" class="border p-2 w-64 rounded" :disabled="!selectedDeck">
+                    <option value="">-- Select model --</option>
+                    <template x-for="model in allModels" :key="model">
+                        <option x-bind:value="model" x-text="model"></option>
+                    </template>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block font-bold mb-1">Word field:</label>
+                    <select x-model="wordField" class="border p-2 w-full rounded" :disabled="!selectedModel">
+                        <option value="">-- Select --</option>
+                        <template x-for="field in fields" :key="field">
+                            <option x-bind:value="field" x-text="field"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Translation field:</label>
+                    <select x-model="translationField" class="border p-2 w-full rounded" :disabled="!selectedModel">
+                        <option value="">-- Select --</option>
+                        <template x-for="field in fields" :key="field">
+                            <option x-bind:value="field" x-text="field"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">Extra field (optional):</label>
+                    <select x-model="extraField" class="border p-2 w-full rounded" :disabled="!selectedModel">
+                        <option value="">-- None --</option>
+                        <template x-for="field in fields" :key="field">
+                            <option x-bind:value="field" x-text="field"></option>
+                        </template>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block font-bold mb-1">Review limit per day:</label>
+                    <input type="number" x-model="reviewLimit" min="1" max="1000"
+                           class="border p-2 w-full rounded">
+                    <p x-show="reviewLimit < 1" class="text-red-500 text-sm mt-1">Must be at least 1</p>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1">New cards per day:</label>
+                    <input type="number" x-model="newLimit" min="0" max="100"
+                           class="border p-2 w-full rounded">
+                    <p x-show="newLimit < 0" class="text-red-500 text-sm mt-1">Cannot be negative</p>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button @click="saveConfig()"
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition disabled:opacity-50"
+                        :disabled="!isConfigComplete()">
+                    Add Deck
+                </button>
+                <a href="/menu" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg transition">
+                    Cancel
+                </a>
+            </div>
+        </div>
+
+        <div x-show="isLoading" class="text-center py-8">
+            <div class="spinner"></div>
+            <p class="text-lg font-medium text-gray-700" x-text="loadingMessage"></p>
+            <p class="text-sm text-gray-500 mt-2">This may take a few seconds...</p>
+        </div>
+
+        <div x-show="errorMessage" class="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <p x-text="errorMessage"></p>
+            <button @click="errorMessage = null; isLoading = false" class="mt-2 text-sm underline">Try again</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function configNew() {
+        return {
+            supportedLanguages: [],
+            loadingLanguages: false,
+            selectedLanguage: '',
+            ankiDecks: [],
+            loadingDecks: false,
+            selectedDeck: '',
+            selectedModel: '',
+            wordField: '',
+            translationField: '',
+            extraField: '',
+            reviewLimit: 200,
+            newLimit: 5,
+            allModels: [],
+            fields: [],
+            initialized: false,
+            isLoading: false,
+            loadingMessage: 'Creating deck...',
+            errorMessage: null,
+
+            init() {
+                if (this.initialized) return;
+                this.initialized = true;
+                this.loadSupportedLanguages();
+                this.loadAnkiDecks();
+                this.loadModels();
+            },
+
+            loadSupportedLanguages() {
+                this.loadingLanguages = true;
+                fetch('/api/language/supported-languages')
+                    .then(r => {
+                        if (!r.ok) throw new Error('Failed to load supported languages');
+                        return r.json();
+                    })
+                    .then(data => {
+                        this.supportedLanguages = data;
+                        this.loadingLanguages = false;
+                    })
+                    .catch(e => {
+                        console.error('Error loading languages:', e);
+                        this.loadingLanguages = false;
+                        this.supportedLanguages = [{ key: 'japanese', label: 'Japanese' }];
+                    });
+            },
+
+            loadAnkiDecks() {
+                this.loadingDecks = true;
+                fetch('/api/anki-connect/decks')
+                    .then(r => {
+                        if (!r.ok) throw new Error('Failed to load decks from Anki');
+                        return r.json();
+                    })
+                    .then(data => {
+                        this.ankiDecks = data;
+                        this.loadingDecks = false;
+                    })
+                    .catch(e => {
+                        console.error('Error loading Anki decks:', e);
+                        this.loadingDecks = false;
+                        alert('Failed to load decks from Anki. Make sure Anki is running.');
+                    });
+            },
+
+            loadModels() {
+                fetch('/api/anki-connect/models')
+                    .then(r => r.json())
+                    .then(data => {
+                        this.allModels = data;
+                    })
+                    .catch(e => console.error('Error loading models:', e));
+            },
+
+            loadFields() {
+                if (!this.selectedModel) {
+                    this.fields = [];
+                    return;
+                }
+                fetch(`/api/anki-connect/fields?modelName=${encodeURIComponent(this.selectedModel)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        this.fields = data;
+                    })
+                    .catch(e => console.error('Error loading fields:', e));
+            },
+
+            isConfigComplete() {
+                return this.selectedLanguage &&
+                       this.selectedDeck &&
+                       this.selectedModel &&
+                       this.wordField &&
+                       this.translationField &&
+                       this.reviewLimit >= 1 &&
+                       this.newLimit >= 0;
+            },
+
+            onModelChange() {
+                this.wordField = '';
+                this.translationField = '';
+                this.extraField = '';
+                this.loadFields();
+            },
+
+            saveConfig() {
+                if (!this.isConfigComplete()) {
+                    alert('Please fill in all required fields!');
+                    return;
+                }
+
+                this.isLoading = true;
+                this.loadingMessage = 'Creating deck configuration...';
+                this.errorMessage = null;
+
+                const payload = {
+                    deckName: this.selectedDeck,
+                    modelName: this.selectedModel,
+                    language: this.selectedLanguage,
+                    wordField: this.wordField,
+                    translationField: this.translationField,
+                    extraField: this.extraField || '',
+                    reviewLimit: parseInt(this.reviewLimit) || 200,
+                    newLimit: parseInt(this.newLimit) || 5
+                };
+
+                fetch('/api/deck-config/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(r => {
+                    if (!r.ok) throw new Error('Failed to add deck');
+                    return r.json();
+                })
+                .then(() => {
+                    this.loadingMessage = 'Deck created! Redirecting...';
+                    setTimeout(() => {
+                        window.location.href = '/menu';
+                    }, 500);
+                })
+                .catch(e => {
+                    this.errorMessage = e.message || 'An error occurred while creating the deck.';
+                    this.isLoading = false;
+                });
+            }
+        }
+    }
+</script>
+</body>
+</html>

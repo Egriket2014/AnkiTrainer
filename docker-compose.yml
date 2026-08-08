@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+
+    container_name: anki-trainer-db
+
+    environment:
+      POSTGRES_USER: anki_trainer
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: anki_trainer
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

@@ -1,8 +1,9 @@
 package com.ankitrainer.language.japanese;
 
 import com.ankitrainer.language.Conjugator;
-import com.ankitrainer.util.Constants;
-import com.ankitrainer.util.enums.JapaneseVerbFormLabelEnum;
+import com.ankitrainer.language.enums.ConjugationType;
+import com.ankitrainer.language.enums.Language;
+import com.ankitrainer.language.enums.PartOfSpeech;
 import com.atilika.kuromoji.ipadic.Token;
 import com.atilika.kuromoji.ipadic.Tokenizer;
 import org.slf4j.Logger;
@@ -12,6 +13,9 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+
+import static com.ankitrainer.language.enums.ConjugationType.*;
 
 @Component
 public class JapaneseVerbConjugator implements Conjugator {
@@ -20,17 +24,24 @@ public class JapaneseVerbConjugator implements Conjugator {
 
     private final Tokenizer tokenizer = new Tokenizer.Builder().build();
 
-    private static final String LANGUAGE = Constants.JAPANESE;
-    private static final String PART_OF_SPEECH = Constants.VERB;
-    private static final Set<String> CONJUGATION_TYPES = JapaneseVerbFormLabelEnum.getKeys();
+    private final Map<ConjugationType, BiFunction<String, VerbType, String>> supportedConjugationMap = Map.of(
+            JP_VERB_TE, this::conjugateToTe,
+            JP_VERB_POLITE, this::conjugateToPolite,
+            JP_VERB_NEGATIVE, this::conjugateToNegative,
+            JP_VERB_NEGATIVE_POLITE, this::conjugateToNegativePolite,
+            JP_VERB_PAST, this::conjugateToPast,
+            JP_VERB_PAST_POLITE, this::conjugateToPastPolite,
+            JP_VERB_PAST_NEGATIVE, this::conjugateToPastNegative,
+            JP_VERB_PAST_NEGATIVE_POLITE, this::conjugateToPastNegativePolite
+    );
 
     @Override
-    public String conjugate(String verb, String conjugationType) {
+    public String conjugate(String verb, ConjugationType conjugationType) {
         if (verb == null || verb.isEmpty() || conjugationType == null) {
             return null;
         }
 
-        Map<String, String> irregularForms = JapaneseUtills.getIrregularConjugations(verb);
+        Map<ConjugationType, String> irregularForms = JapaneseUtils.getIrregularConjugations(verb);
         if (irregularForms != null) {
             String result = irregularForms.get(conjugationType);
             if (result != null) {
@@ -41,37 +52,30 @@ public class JapaneseVerbConjugator implements Conjugator {
         }
 
         VerbType type = detectVerbType(verb);
-        log.debug("Detected verb type: {} for '{}'", type, verb);
+        log.trace("Detected verb type: {} for '{}'", type, verb);
 
-        return switch (conjugationType) {
-            case "te" -> conjugateToTe(verb, type);
-            case "polite" -> conjugateToPolite(verb, type);
-            case "negative" -> conjugateToNegative(verb, type);
-            case "negative_polite" -> conjugateToNegativePolite(verb, type);
-            case "past" -> conjugateToPast(verb, type);
-            case "past_polite" -> conjugateToPastPolite(verb, type);
-            case "past_negative" -> conjugateToPastNegative(verb, type);
-            case "past_negative_polite" -> conjugateToPastNegativePolite(verb, type);
-            default -> {
-                log.warn("Unsupported conjugation type: {}", conjugationType);
-                yield null;
-            }
-        };
+        BiFunction<String, VerbType, String> conjugator = supportedConjugationMap.get(conjugationType);
+        if (conjugator == null) {
+            log.warn("Unsupported conjugation type: {}", conjugationType);
+            return null;
+        }
+
+        return conjugator.apply(verb, type);
     }
 
     @Override
-    public String getLanguage() {
-        return LANGUAGE;
+    public Language getLanguage() {
+        return Language.JAPANESE;
     }
 
     @Override
-    public String getPartOfSpeech() {
-        return PART_OF_SPEECH;
+    public PartOfSpeech getPartOfSpeech() {
+        return PartOfSpeech.VERB;
     }
 
     @Override
-    public Set<String> getSupportedConjugationTypes() {
-        return CONJUGATION_TYPES;
+    public Set<ConjugationType> getSupportedConjugationTypes() {
+        return supportedConjugationMap.keySet();
     }
 
     /*
@@ -107,7 +111,7 @@ public class JapaneseVerbConjugator implements Conjugator {
             case ICHIDAN -> verb.substring(0, verb.length() - 1) + "ます";
             case GODAN -> {
                 char lastChar = verb.charAt(verb.length() - 1);
-                String iRow = JapaneseUtills.getGodanUToI(lastChar);
+                String iRow = JapaneseUtils.getGodanUToI(lastChar);
                 if (iRow == null) {
                     log.warn("Unknown godan ending for polite: {}", lastChar);
                     yield null;
@@ -125,7 +129,7 @@ public class JapaneseVerbConjugator implements Conjugator {
             case ICHIDAN -> verb.substring(0, verb.length() - 1) + "ない";
             case GODAN -> {
                 char lastChar = verb.charAt(verb.length() - 1);
-                String aRow = JapaneseUtills.getGodanUToA(lastChar);
+                String aRow = JapaneseUtils.getGodanUToA(lastChar);
                 if (aRow == null) {
                     log.warn("Unknown godan ending for negative: {}", lastChar);
                     yield null;
@@ -205,7 +209,7 @@ public class JapaneseVerbConjugator implements Conjugator {
     }
 
     private VerbType detectVerbType(String verb) {
-        if (JapaneseUtills.isGodanException(verb)) {
+        if (JapaneseUtils.isGodanException(verb)) {
             return VerbType.GODAN;
         }
 
@@ -228,7 +232,7 @@ public class JapaneseVerbConjugator implements Conjugator {
 
         // Проверяем слог перед "る"
         char beforeRu = reading.charAt(reading.length() - 2);
-        return JapaneseUtills.isIchidanSyllable(beforeRu);
+        return JapaneseUtils.isIchidanSyllable(beforeRu);
     }
 
     private String getReading(String verb) {

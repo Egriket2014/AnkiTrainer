@@ -44,7 +44,7 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
             );
 
             String json = objectMapper.writeValueAsString(requestBody);
-            log.debug("Request body: {}", json);
+            log.trace("Request body: {}", json);
 
             HttpURLConnection conn = (HttpURLConnection) new URL(ankiConnectUrl).openConnection();
             conn.setRequestMethod("POST");
@@ -71,7 +71,7 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
                 }
                 responseBody = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             }
-            log.debug("Response body: {}", responseBody);
+            log.trace("Response body: {}", responseBody);
 
             JsonNode responseJson = objectMapper.readTree(responseBody);
             if (responseJson.has("error") && !responseJson.get("error").isNull()) {
@@ -93,7 +93,7 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
     public JsonNode getDeckNames() {
         log.info("Fetching deck names from Anki...");
         JsonNode response = sendRequest("deckNames", null);
-        log.debug("AnkiConnect 'deckNames' response JsonNode={}", response);
+        log.trace("AnkiConnect 'deckNames' response JsonNode={}", response);
 
         return response;
     }
@@ -102,7 +102,7 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
     public JsonNode getModelNames() {
         log.info("Fetching all model names from Anki...");
         JsonNode response = sendRequest("modelNames", null);
-        log.debug("AnkiConnect 'modelNames' response JsonNode={}", response);
+        log.trace("AnkiConnect 'modelNames' response JsonNode={}", response);
 
         return response;
     }
@@ -111,7 +111,7 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
     public JsonNode getFieldNamesForModel(String modelName) {
         log.info("Fetching model field names for model '{}' from Anki...", modelName);
         JsonNode response = sendRequest("modelFieldNames", Map.of("modelName", modelName));
-        log.debug("AnkiConnect 'modelFieldNames' response JsonNode={}", response);
+        log.trace("AnkiConnect 'modelFieldNames' response JsonNode={}", response);
 
         return response;
     }
@@ -120,7 +120,7 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
     public JsonNode getNotesIdsForDeck(String deckName) {
         log.info("Fetching notes IDs for deck '{}' from Anki...", deckName);
         JsonNode response = sendRequest("findNotes", Map.of("query", "deck:" + deckName));
-        log.debug("AnkiConnect 'findNotes' response JsonNode={}", response);
+        log.trace("AnkiConnect 'findNotes' response JsonNode={}", response);
 
         return response;
     }
@@ -129,7 +129,7 @@ public class AnkiConnectClientImpl implements AnkiConnectClient {
     public JsonNode getNotesInfoByIds(List<Long> noteIds) {
         log.info("Fetching notes from Anki...");
         JsonNode response = sendRequest("notesInfo", Map.of("notes", noteIds));
-        log.debug("AnkiConnect 'notesInfo' response JsonNode={}", response);
+        log.trace("AnkiConnect 'notesInfo' response JsonNode={}", response);
 
         return response;
     }

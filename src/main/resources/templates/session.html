@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Anki Trainer - Session</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    .translation-content ul {
+        list-style-type: none !important;
+        padding-left: 0 !important;
+        margin: 0.5rem 0 !important;
+        text-align: left !important;
+    }
+    .translation-content li {
+        display: list-item !important;
+        margin: 0.2rem 0 !important;
+        text-align: left !important;
+        padding-left: 0 !important;
+    }
+    .translation-content li::before {
+        content: "• ";
+        color: #6b7280;
+        font-size: 1.2rem;
+    }
+    .translation-content ol {
+        list-style-type: none !important;
+        padding-left: 0 !important;
+        margin: 0.5rem 0 !important;
+        text-align: left !important;
+        counter-reset: item;
+    }
+    .translation-content ol li {
+        display: list-item !important;
+        margin: 0.2rem 0 !important;
+        text-align: left !important;
+        padding-left: 0 !important;
+    }
+    .translation-content ol li::before {
+        content: counter(item) ". ";
+        counter-increment: item;
+        color: #6b7280;
+    }
+    .translation-content div {
+        text-align: left !important;
+    }
+  </style>
+</head>
+<body>
+<div class="container mx-auto p-8 max-w-2xl" x-data="session()" x-init="init()">
+
+  <div class="mb-8">
+    <a href="#" @click.prevent="saveAndGoBack()"
+       class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition inline-block">
+      ← Back
+    </a>
+  </div>
+
+  <div x-show="loading" class="text-center py-16">
+    <p class="text-gray-500">Loading card...</p>
+  </div>
+
+  <div x-show="!loading && !complete" class="max-w-lg mx-auto">
+    <div class="text-center mb-6 mt-16">
+      <p class="text-4xl font-bold" x-text="currentCard.word"></p>
+    </div>
+
+    <div class="text-center mb-10">
+      <p class="text-lg text-gray-500" x-text="currentCard.extra"></p>
+    </div>
+
+    <div class="text-center mb-2 text-sm text-gray-400">
+      <span x-text="conjugationTypeLabel"></span>
+    </div>
+
+    <div class="mb-4">
+      <input type="text"
+             x-model="answer"
+             id="answerInput"
+             @keydown="if ($event.key === 'Enter') handleEnter()"
+             class="w-full border-2 rounded-lg p-3 text-center text-xl focus:outline-none transition-colors duration-300"
+             :class="{
+                       'border-gray-300': !answered,
+                       'border-green-500 bg-green-50': answered && isCorrect,
+                       'border-red-500 bg-red-50': answered && !isCorrect
+                   }"
+             placeholder="Type answer..."
+             :disabled="answered || complete">
+    </div>
+
+    <div x-show="answered && !complete" class="text-center text-sm text-gray-500 mb-8">
+      <span>Press </span>
+      <a href="#" @click.prevent="nextCard()" class="text-blue-500 hover:underline font-medium">Next</a>
+      <span> or Enter</span>
+    </div>
+
+    <div x-show="!answered && !complete" class="text-center mt-4">
+      <button @click="showAnswer()"
+              class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-8 rounded-lg text-lg transition">
+        Show answer
+      </button>
+    </div>
+
+    <div x-show="answered" class="text-center mt-4 text-lg font-medium py-2">
+      <span x-text="currentCard.expectedAnswer"></span>
+    </div>
+
+    <div class="mt-8">
+      <button @click="showTranslation = !showTranslation"
+              class="text-blue-500 hover:text-blue-700 text-sm font-medium transition flex items-center gap-1">
+        <span x-show="showTranslation">▼</span>
+        <span x-show="!showTranslation">▶</span>
+        Translation
+      </button>
+      <div x-show="showTranslation" class="mt-1 translation-content">
+        <div class="text-xl text-gray-600" x-html="currentCard.translation"></div>
+      </div>
+    </div>
+  </div>
+
+  <div x-show="complete" class="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+    <div class="text-center pointer-events-auto">
+      <div class="text-6xl mb-4">🎉</div>
+      <h2 class="text-3xl font-bold mb-2">Training complete!</h2>
+      <p class="text-gray-600">You've finished all cards in this session.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.handleEnterFromJava = function() {
+      console.log('🔹 Enter from Java!');
+      if (window.sessionComponent && window.sessionComponent.handleEnter) {
+          window.sessionComponent.handleEnter();
+      }
+  };
+
+  function session() {
+      return {
+          currentCard: null,
+          answer: '',
+          answered: false,
+          isCorrect: false,
+          showTranslation: true,
+          loading: true,
+          complete: false,
+
+          deckConfigId: null,
+          partOfSpeech: '',
+          conjugationType: '',
+          conjugationTypeLabel: '',
+          initialized: false,
+
+          init() {
+              if (this.initialized) return;
+              this.initialized = true;
+
+              console.log('🔹 Session initialized');
+              window.sessionComponent = this;
+
+              const urlParams = new URLSearchParams(window.location.search);
+              this.deckConfigId = urlParams.get('deckId');
+              this.partOfSpeech = urlParams.get('partOfSpeech') || 'verb';
+              this.conjugationType = urlParams.get('conjugationType') || 'jp_verb_past';
+
+              const labels = {
+                  'jp_verb_te': 'て-form',
+                  'jp_verb_polite': 'ます-form (polite)',
+                  'jp_verb_negative': 'ない-form (negative)',
+                  'jp_verb_negative_polite': 'ません-form (negative polite)',
+                  'jp_verb_past': 'た-form (past)',
+                  'jp_verb_past_polite': 'ました-form (past polite)',
+                  'jp_verb_past_negative': 'なかった-form (past negative)',
+                  'jp_verb_past_negative_polite': 'ませんでした-form (past negative polite)'
+              };
+              this.conjugationTypeLabel = labels[this.conjugationType] || this.conjugationType;
+
+              if (!this.deckConfigId) {
+                  console.error('❌ deckConfigId is required');
+                  window.location.href = '/menu';
+                  return;
+              }
+
+              this.prepareSession();
+          },
+
+          prepareSession() {
+              this.loading = true;
+
+              fetch('/api/session/prepare', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                      deckConfigId: parseInt(this.deckConfigId),
+                      partOfSpeech: this.partOfSpeech,
+                      conjugationType: this.conjugationType
+                  })
+              })
+              .then(r => {
+                  if (!r.ok) throw new Error('Failed to prepare session');
+                  this.loadCurrentCard();
+              })
+              .catch(e => {
+                  console.error('❌ Error preparing session:', e);
+                  alert('Failed to prepare cards: ' + e.message);
+                  window.location.href = '/menu';
+              });
+          },
+
+          loadCurrentCard() {
+              this.loading = true;
+
+              fetch('/api/session/current')
+                  .then(r => {
+                      if (r.status === 204) {
+                          this.complete = true;
+                          this.loading = false;
+                          console.log('🏁 Session complete!');
+                          return null;
+                      }
+                      if (!r.ok) throw new Error('Failed to load card');
+                      return r.json();
+                  })
+                  .then(data => {
+                      if (data === null) {
+                          return;
+                      }
+
+                      this.currentCard = data;
+                      this.loading = false;
+                      this.answer = '';
+                      this.answered = false;
+                      this.isCorrect = false;
+                      console.log('✅ Card loaded:', this.currentCard);
+                  })
+                  .catch(e => {
+                      console.error('❌ Error loading card:', e);
+                      this.loading = false;
+                      alert('Failed to load card: ' + e.message);
+                  });
+          },
+
+          handleEnter() {
+              console.log('🔹 handleEnter called');
+              if (this.complete) return;
+
+              if (!this.answered) {
+                  this.checkAnswer();
+              } else {
+                  this.nextCard();
+              }
+          },
+
+          checkAnswer() {
+              if (this.answered || this.complete) return;
+
+              const trimmedAnswer = this.answer.trim();
+
+              const params = new URLSearchParams();
+              params.append('answer', trimmedAnswer);
+
+              fetch('/api/session/check', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/x-www-form-urlencoded'
+                  },
+                  body: params
+              })
+              .then(r => {
+                  if (!r.ok) throw new Error('Failed to check answer');
+                  return r.json();
+              })
+              .then(data => {
+                  this.isCorrect = data;
+                  this.answered = true;
+                  console.log('✅ Check result:', data);
+              })
+              .catch(e => {
+                  console.error('❌ Error checking answer:', e);
+                  alert('Failed to check answer: ' + e.message);
+              });
+          },
+
+          loadNextCard() {
+              // Сначала проверяем, завершена ли сессия
+              fetch('/api/session/is-complete')
+                  .then(r => r.json())
+                  .then(complete => {
+                      if (complete) {
+                          this.complete = true;
+                          this.loading = false;
+                          console.log('🏁 Session complete!');
+                          return;
+                      }
+
+                      // Если сессия не завершена, загружаем следующую карточку
+                      this.loading = true;
+                      fetch('/api/session/current')
+                          .then(r => {
+                              if (r.status === 204) {
+                                  this.complete = true;
+                                  this.loading = false;
+                                  console.log('🏁 Session complete!');
+                                  return null;
+                              }
+                              if (!r.ok) throw new Error('Failed to load card');
+                              return r.json();
+                          })
+                          .then(data => {
+                              if (data === null) {
+                                  return;
+                              }
+
+                              this.currentCard = data;
+                              this.loading = false;
+                              this.answer = '';
+                              this.answered = false;
+                              this.isCorrect = false;
+                              console.log('✅ Next card loaded:', this.currentCard);
+                          })
+                          .catch(e => {
+                              console.error('❌ Error loading next card:', e);
+                              this.loading = false;
+                              alert('Failed to load next card: ' + e.message);
+                          });
+                  })
+                  .catch(e => {
+                      console.error('❌ Error checking completion status:', e);
+                      this.loading = false;
+                  });
+          },
+
+          showAnswer() {
+              if (this.answered || this.complete) return;
+              this.answer = '';
+              this.checkAnswer();
+          },
+
+          nextCard() {
+              if (this.complete) return;
+              this.loadNextCard();
+          },
+
+          saveAndGoBack() {
+              fetch('/api/session/save', {
+                  method: 'POST'
+              })
+              .then(() => {
+                  window.location.href = '/menu';
+              })
+              .catch(e => {
+                  console.error('❌ Error saving results:', e);
+                  window.location.href = '/menu';
+              });
+          }
+      }
+  }
+</script>
+</body>
+</html>
