@@ -48,11 +48,16 @@
 <body>
 <div class="container mx-auto p-8 max-w-2xl" x-data="session()" x-init="init()">
 
-  <div class="mb-8">
+  <div class="mb-8 flex items-center justify-between">
     <a href="#" @click.prevent="saveAndGoBack()"
        class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition inline-block">
       ← Back
     </a>
+    <div class="flex gap-6">
+      <span class="text-base font-medium text-blue-500" x-text="stats.blue"></span>
+      <span class="text-base font-medium text-red-500" x-text="stats.red"></span>
+      <span class="text-base font-medium text-green-600" x-text="stats.green"></span>
+    </div>
   </div>
 
   <div x-show="loading" class="text-center py-16">
@@ -148,6 +153,7 @@
           partOfSpeech: '',
           conjugationType: '',
           conjugationTypeLabel: '',
+          stats: { blue: 0, red: 0, green: 0 },
           initialized: false,
 
           init() {
@@ -199,6 +205,7 @@
               })
               .then(r => {
                   if (!r.ok) throw new Error('Failed to prepare session');
+                  this.loadStats();
                   this.loadCurrentCard();
               })
               .catch(e => {
@@ -241,6 +248,18 @@
                   });
           },
 
+          loadStats() {
+              fetch('/api/session/queue-stats')
+                  .then(r => r.json())
+                  .then(data => {
+                      this.stats = data;
+                      console.log('📊 Queue stats:', data);
+                  })
+                  .catch(e => {
+                      console.error('❌ Error loading queue stats:', e);
+                  });
+          },
+
           handleEnter() {
               console.log('🔹 handleEnter called');
               if (this.complete) return;
@@ -274,6 +293,7 @@
               .then(data => {
                   this.isCorrect = data;
                   this.answered = true;
+                  this.loadStats();
                   console.log('✅ Check result:', data);
               })
               .catch(e => {

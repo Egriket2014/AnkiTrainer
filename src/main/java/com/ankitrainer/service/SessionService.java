@@ -1,9 +1,11 @@
 package com.ankitrainer.service;
 
+import com.ankitrainer.dto.session.QueueStatsDto;
 import com.ankitrainer.entity.CardSrsEntity;
 import com.ankitrainer.entity.DeckConfigEntity;
 import com.ankitrainer.language.enums.ConjugationType;
 import com.ankitrainer.language.enums.PartOfSpeech;
+import com.ankitrainer.queue.SessionQueue;
 import io.github.openspacedrepetition.CardAndReviewLog;
 import io.github.openspacedrepetition.Rating;
 import io.github.openspacedrepetition.Scheduler;
@@ -15,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.PriorityQueue;
 
 @Service
 public class SessionService {
@@ -30,7 +31,7 @@ public class SessionService {
     private Scheduler scheduler;
 
     // Session
-    private PriorityQueue<CardSrsEntity> currentCards;
+    private SessionQueue currentQueue;
     private DeckConfigEntity currentDeckConfig;
     private ConjugationType currentConjugationType;
     private PartOfSpeech partOfSpeech;
@@ -43,15 +44,15 @@ public class SessionService {
         this.currentConjugationType = conjugationType;
         this.partOfSpeech = partOfSpeech;
 
-        this.currentCards = loadQueue();
-        log.info("Prepared {} cards for session", currentCards.size());
+        this.currentQueue = loadQueue();
+        log.info("Prepared {} cards for session", currentQueue.size());
     }
 
 
     /*
-        ТИП 1. Новая карточка - state=LEARNING, step=0
-        ТИП 2. Новая, но которую уже видели сегодня - state=LEARNING, step!=0, lastReview=today
-        ТИП 3. Новая, но которую уже видели не сегодня - state=LEARNING, step!=0, lastReview<today
+        ТИП 1. Новая карточка - state=LEARNING, lastReview=null
+        ТИП 2. Новая, но которую уже видели сегодня - state=LEARNING, lastReview=today
+        ТИП 3. Новая, но которую уже видели не сегодня - state=LEARNING, lastReview<today
         ТИП 4. Не новая, но которую уже увидели и ответили неправильно - state=RELEARNING
         ТИП 5. На повторение - state=REVIEW, due < now()
 
@@ -63,8 +64,8 @@ public class SessionService {
         4) Запрашиваем все карточки типа 4.
         5) Запрашиваем все карточки типа 5 с лимитом < review_limit
      */
-    private PriorityQueue<CardSrsEntity> loadQueue() {
-        PriorityQueue<CardSrsEntity> queue = new PriorityQueue<>(CardSrsEntity.BY_DUE);
+    private SessionQueue loadQueue() {
+        SessionQueue queue = new SessionQueue();
 
         String deckName = currentDeckConfig.getDeckName();
         ConjugationType conjugationType = currentConjugationType;
@@ -109,11 +110,18 @@ public class SessionService {
         if (isComplete()) {
             return null;
         }
-        return currentCards.peek();
+        return currentQueue.peek();
     }
 
     public boolean isComplete() {
-        return currentCards == null || currentCards.isEmpty();
+        return currentQueue == null || currentQueue.isEmpty();
+    }
+
+    public QueueStatsDto getQueueStats() {
+        if (currentQueue == null) {
+            return QueueStatsDto.builder().blue(0).red(0).green(0).build();
+        }
+        return currentQueue.stats();
     }
 
     @Transactional
@@ -122,7 +130,7 @@ public class SessionService {
             throw new IllegalStateException("Session is complete");
         }
 
-        CardSrsEntity card = currentCards.poll();
+        CardSrsEntity card = currentQueue.poll();
         if (card == null) {
             throw new IllegalStateException("Queue is empty but session is not complete");
         }
@@ -133,14 +141,19 @@ public class SessionService {
         log.debug("Checking answer for card {}: user='{}', expected='{}', correct={}",
                 card.getCard().getWord(), userAnswer, card.getAnswer(), isCorrect);
 
+        log.debug("OLD SRS {}", card.getSrsCard().toJson());
+
         CardAndReviewLog review = scheduler.reviewCard(card.getSrsCard(), rating);
         card.setSrsCard(review.card());
+
+        log.debug("NEW SRS {}", card.getSrsCard().toJson());
+
         cardService.saveCardSrs(card);
 
         if (card.getState() == State.REVIEW) {
             log.debug("Card {} completed and moved to REVIEW, removing from queue", card.getAnswer());
         } else {
-            currentCards.offer(card);
+            currentQueue.add(card);
             log.debug("Card {} returned to queue with new due: {}, state: {}",
                     card.getAnswer(), review.card().getDue(), card.getState());
         }
@@ -154,10 +167,7 @@ public class SessionService {
     }
 
     private void clearSession() {
-        if (currentCards != null) {
-            currentCards.clear();
-        }
-        currentCards = null;
+        currentQueue = null;
         currentDeckConfig = null;
         currentConjugationType = null;
     }

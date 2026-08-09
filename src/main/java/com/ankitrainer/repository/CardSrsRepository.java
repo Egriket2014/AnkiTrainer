@@ -45,7 +45,6 @@ public interface CardSrsRepository extends JpaRepository<CardSrsEntity, Long> {
             WHERE card.deck_name = :deckName
               AND c.conjugation_type = :conjugationType
               AND c.srs_json->>'state' = 'LEARNING'
-              AND (c.srs_json->>'step')::int > 0
               AND (c.srs_json->>'lastReview')::date = CAST(:today AS date)
               AND (c.srs_json->>'due')::timestamp <= CURRENT_TIMESTAMP
             ORDER BY (c.srs_json->>'due')::timestamp ASC
@@ -68,7 +67,6 @@ public interface CardSrsRepository extends JpaRepository<CardSrsEntity, Long> {
             WHERE card.deck_name = :deckName
               AND c.conjugation_type = :conjugationType
               AND c.srs_json->>'state' = 'LEARNING'
-              AND (c.srs_json->>'step')::int > 0
               AND (c.srs_json->>'lastReview')::date < CAST(:today AS date)
               AND (c.srs_json->>'due')::timestamp <= CURRENT_TIMESTAMP
             ORDER BY (c.srs_json->>'due')::timestamp ASC

@@ -2,6 +2,7 @@ package com.ankitrainer.controller.api;
 
 import com.ankitrainer.dto.card.CardResponseDto;
 import com.ankitrainer.dto.session.PrepareRequestDto;
+import com.ankitrainer.dto.session.QueueStatsDto;
 import com.ankitrainer.entity.CardSrsEntity;
 import com.ankitrainer.mapper.CardMapper;
 import com.ankitrainer.service.SessionService;
@@ -43,6 +44,11 @@ public class SessionController {
     @GetMapping("/is-complete")
     public boolean isComplete() {
         return sessionService.isComplete();
+    }
+
+    @GetMapping("/queue-stats")
+    public QueueStatsDto getQueueStats() {
+        return sessionService.getQueueStats();
     }
 
     @PostMapping("/save")

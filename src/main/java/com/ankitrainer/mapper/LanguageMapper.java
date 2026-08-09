@@ -8,6 +8,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -35,6 +36,7 @@ public interface LanguageMapper {
             return List.of();
         }
         return partsOfSpeech.stream()
+                .sorted(Comparator.comparingInt(PartOfSpeech::ordinal))
                 .map(this::partOfSpeechToDto)
                 .collect(Collectors.toList());
     }
@@ -44,6 +46,7 @@ public interface LanguageMapper {
             return List.of();
         }
         return conjugationTypes.stream()
+                .sorted(Comparator.comparingInt(ConjugationType::ordinal))
                 .map(this::conjugationToDto)
                 .collect(Collectors.toList());
     }
