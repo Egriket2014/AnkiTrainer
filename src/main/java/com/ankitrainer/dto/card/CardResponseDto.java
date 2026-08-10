@@ -15,4 +15,5 @@ public class CardResponseDto {
     private String translation;
     private String extra;
     private String expectedAnswer;
+    private String stem;
 }

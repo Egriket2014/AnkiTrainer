@@ -12,6 +12,11 @@ public class PageController {
         return "menu";
     }
 
+    @GetMapping("/settings")
+    public String settingsPage() {
+        return "settings";
+    }
+
     @GetMapping("/config/new")
     public String newConfigPage() {
         return "config-new";

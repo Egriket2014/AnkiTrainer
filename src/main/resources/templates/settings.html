@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Anki Trainer - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+<div class="container mx-auto p-8 max-w-2xl" x-data="settings()" x-init="init()">
+
+    <!-- Шапка -->
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-4xl font-bold">Settings</h1>
+        <a href="/menu"
+           class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition">
+            ← Back
+        </a>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="text-center py-8">
+        <p class="text-gray-500">Loading settings...</p>
+    </div>
+
+    <!-- Настройки -->
+    <div x-show="!loading" class="bg-gray-50 border rounded-lg p-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="font-medium text-gray-800">Auto-fill word stem on Tab</h2>
+                <p class="text-sm text-gray-500">Fill in the word stem when you press Tab during a session.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox"
+                       class="sr-only peer"
+                       x-model="stemAutoCompleteOnTab"
+                       @change="saveSettings()">
+                <div class="w-11 h-6 bg-gray-300 peer-checked:bg-blue-500 rounded-full transition
+                            after:content-[''] after:absolute after:start-0.5 after:top-0.5 after:bg-white
+                            after:rounded-full after:h-5 after:w-5 after:transition-all
+                            peer-checked:after:translate-x-full"></div>
+            </label>
+        </div>
+    </div>
+</div>
+
+<script>
+    function settings() {
+        return {
+            loading: true,
+            stemAutoCompleteOnTab: false,
+            initialized: false,
+
+            init() {
+                if (this.initialized) return;
+                this.initialized = true;
+                this.loadSettings();
+            },
+
+            loadSettings() {
+                fetch('/api/settings')
+                    .then(r => {
+                        if (!r.ok) throw new Error('Failed to load settings');
+                        return r.json();
+                    })
+                    .then(data => {
+                        this.stemAutoCompleteOnTab = data.stemAutoCompleteOnTab;
+                        this.loading = false;
+                    })
+                    .catch(e => {
+                        console.error('Failed to load settings:', e);
+                        this.loading = false;
+                    });
+            },
+
+            saveSettings() {
+                fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        stemAutoCompleteOnTab: this.stemAutoCompleteOnTab
+                    })
+                })
+                .then(r => {
+                    if (!r.ok) throw new Error('Failed to save settings');
+                })
+                .catch(e => {
+                    console.error('Failed to save settings:', e);
+                    alert('Failed to save settings: ' + e.message);
+                });
+            }
+        }
+    }
+</script>
+</body>
+</html>

@@ -3,6 +3,8 @@ package com.ankitrainer;
 import javafx.application.Application;
 import javafx.concurrent.Worker;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import netscape.javascript.JSObject;
@@ -42,10 +44,14 @@ public class DesktopApp extends Application {
         webView.getEngine().load("http://localhost:8080/menu");
 
         Scene scene = new Scene(webView, 900, 700);
-        scene.setOnKeyPressed(event -> {
-            if (event.getCode() == javafx.scene.input.KeyCode.ENTER) {
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ENTER) {
                 System.out.println("🔹 Enter pressed in JavaFX Scene!");
                 webView.getEngine().executeScript("window.handleEnterFromJava();");
+            } else if (event.getCode() == KeyCode.TAB) {
+                System.out.println("🔹 Tab pressed in JavaFX Scene!");
+                webView.getEngine().executeScript("window.handleTabFromJava();");
+                event.consume();
             }
         });
         stage.setTitle("Anki Verb Trainer");
