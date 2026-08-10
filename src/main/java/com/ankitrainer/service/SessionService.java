@@ -144,7 +144,7 @@ public class SessionService {
         log.debug("OLD SRS {}", card.getSrsCard().toJson());
 
         CardAndReviewLog review = scheduler.reviewCard(card.getSrsCard(), rating);
-        card.setSrsCard(review.card());
+        card.updateSrs(review.card());
 
         log.debug("NEW SRS {}", card.getSrsCard().toJson());
 

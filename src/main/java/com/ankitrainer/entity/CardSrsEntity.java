@@ -65,11 +65,15 @@ public class CardSrsEntity implements Comparable<CardSrsEntity> {
     }
 
     @PrePersist
-    @PreUpdate
     private void onSave() {
         if (srsCard != null) {
             this.srsJson = srsCard.toJson();
         }
+    }
+
+    public void updateSrs(Card newCard) {
+        this.srsCard = newCard;
+        this.srsJson = newCard.toJson();
     }
 
     public State getState() {
