@@ -5,9 +5,9 @@ import com.ankitrainer.exception.DeckNotFoundException;
 import com.ankitrainer.mapper.DeckConfigMapper;
 import com.ankitrainer.repository.DeckConfigRepository;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +17,16 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class DeckConfigService {
 
     private static final Logger log = LoggerFactory.getLogger(DeckConfigService.class);
 
-    private final DeckConfigRepository deckConfigRepository;
-    private final DeckConfigMapper deckConfigMapper;
-
-    private final CardService cardService;
+    @Autowired
+    private DeckConfigRepository deckConfigRepository;
+    @Autowired
+    private DeckConfigMapper deckConfigMapper;
+    @Autowired
+    private CardService cardService;
 
     private final Map<String, DeckConfigEntity> cacheByName = new HashMap<>();
     private final Map<Long, DeckConfigEntity> cacheById = new HashMap<>();

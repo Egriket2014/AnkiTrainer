@@ -1,11 +1,14 @@
 package com.ankitrainer.service;
 
+import com.ankitrainer.dto.session.QueueStatsDto;
 import com.ankitrainer.entity.CardEntity;
 import com.ankitrainer.entity.CardSrsEntity;
 import com.ankitrainer.entity.DeckConfigEntity;
+import com.ankitrainer.exception.DeckNotFoundException;
 import com.ankitrainer.language.enums.ConjugationType;
 import com.ankitrainer.repository.CardRepository;
 import com.ankitrainer.repository.CardSrsRepository;
+import com.ankitrainer.repository.DeckConfigRepository;
 import com.ankitrainer.service.anki.AnkiConnectService;
 import com.ankitrainer.service.language.LanguageService;
 import io.github.openspacedrepetition.Card;
@@ -33,6 +36,8 @@ public class CardService {
     private AnkiConnectService ankiConnectService;
     @Autowired
     private LanguageService languageService;
+    @Autowired
+    private DeckConfigRepository deckConfigRepository;
 
     @Transactional
     public void createCardsFromAnki(DeckConfigEntity deckConfig) {
@@ -138,5 +143,39 @@ public class CardService {
     @Transactional
     public void saveCardSrs(CardSrsEntity entity) {
         cardSrsRepository.save(entity);
+    }
+
+    @Transactional
+    public QueueStatsDto getQueueStats(Long deckConfigId, ConjugationType conjugationType) {
+        DeckConfigEntity deckConfig = getDeckConfig(deckConfigId);
+        String deckName = deckConfig.getDeckName();
+        String type = conjugationType.getKey();
+        String today = LocalDate.now().toString();
+        int newLimit = deckConfig.getNewLimit();
+        int reviewLimit = deckConfig.getReviewLimit();
+
+        int type2Count = cardSrsRepository.countSeenTodayNewCards(deckName, type, today);
+        int type1Count = cardSrsRepository.countNewCardsForToday(deckName, type);
+        int type3Count = cardSrsRepository.countSeenNotTodayNewCards(deckName, type, today);
+        int type4Count = cardSrsRepository.countRelearningCards(deckName, type);
+        int type5Count = cardSrsRepository.countReviewCards(deckName, type);
+
+        int blue = Math.min(type1Count, Math.max(0, newLimit - type2Count));
+        int red = type2Count + type3Count + type4Count;
+        int green = Math.min(type5Count, reviewLimit);
+
+        log.info("Queue stats for deck: {}, conjugation: {} -> blue: {}, red: {}, green: {}",
+                deckName, type, blue, red, green);
+
+        return QueueStatsDto.builder()
+                .blue(blue)
+                .red(red)
+                .green(green)
+                .build();
+    }
+
+    private DeckConfigEntity getDeckConfig(Long deckConfigId) {
+        return deckConfigRepository.findById(deckConfigId)
+                .orElseThrow(() -> new DeckNotFoundException("Deck not found with ID: " + deckConfigId));
     }
 }

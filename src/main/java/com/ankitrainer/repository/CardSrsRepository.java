@@ -116,4 +116,68 @@ public interface CardSrsRepository extends JpaRepository<CardSrsEntity, Long> {
     List<CardSrsEntity> findReviewCards(@Param("deckName") String deckName,
                                         @Param("conjugationType") String conjugationType,
                                         @Param("limit") int limit);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM card_srs c
+            JOIN card card ON c.card_id = card.id
+            WHERE card.deck_name = :deckName
+              AND c.conjugation_type = :conjugationType
+              AND c.srs_json->>'state' = 'LEARNING'
+              AND c.srs_json->>'lastReview' IS NULL
+            """, nativeQuery = true)
+    int countNewCardsForToday(@Param("deckName") String deckName,
+                               @Param("conjugationType") String conjugationType);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM card_srs c
+            JOIN card card ON c.card_id = card.id
+            WHERE card.deck_name = :deckName
+              AND c.conjugation_type = :conjugationType
+              AND c.srs_json->>'state' = 'LEARNING'
+              AND (c.srs_json->>'lastReview')::date = CAST(:today AS date)
+              AND (c.srs_json->>'due')::timestamp <= CURRENT_TIMESTAMP
+            """, nativeQuery = true)
+    int countSeenTodayNewCards(@Param("deckName") String deckName,
+                                @Param("conjugationType") String conjugationType,
+                                @Param("today") String today);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM card_srs c
+            JOIN card card ON c.card_id = card.id
+            WHERE card.deck_name = :deckName
+              AND c.conjugation_type = :conjugationType
+              AND c.srs_json->>'state' = 'LEARNING'
+              AND (c.srs_json->>'lastReview')::date < CAST(:today AS date)
+              AND (c.srs_json->>'due')::timestamp <= CURRENT_TIMESTAMP
+            """, nativeQuery = true)
+    int countSeenNotTodayNewCards(@Param("deckName") String deckName,
+                                   @Param("conjugationType") String conjugationType,
+                                   @Param("today") String today);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM card_srs c
+            JOIN card card ON c.card_id = card.id
+            WHERE card.deck_name = :deckName
+              AND c.conjugation_type = :conjugationType
+              AND c.srs_json->>'state' = 'RELEARNING'
+              AND (c.srs_json->>'due')::timestamp <= CURRENT_TIMESTAMP
+            """, nativeQuery = true)
+    int countRelearningCards(@Param("deckName") String deckName,
+                              @Param("conjugationType") String conjugationType);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM card_srs c
+            JOIN card card ON c.card_id = card.id
+            WHERE card.deck_name = :deckName
+              AND c.conjugation_type = :conjugationType
+              AND c.srs_json->>'state' = 'REVIEW'
+              AND (c.srs_json->>'due')::timestamp <= CURRENT_TIMESTAMP
+            """, nativeQuery = true)
+    int countReviewCards(@Param("deckName") String deckName,
+                          @Param("conjugationType") String conjugationType);
 }

@@ -49,7 +49,14 @@
         <template x-for="type in conjugationTypes" :key="type.key">
           <button @click="startTraining(type.key)"
                   class="block w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-lg text-lg transition">
-            <span x-text="type.label"></span>
+            <span class="flex items-center justify-between">
+              <span x-text="type.label"></span>
+              <span x-show="stats[type.key]" class="flex gap-3 text-sm font-medium">
+                <span class="bg-blue-600 px-2 py-0.5 rounded" x-text="stats[type.key].blue">0</span>
+                <span class="bg-red-600 px-2 py-0.5 rounded" x-text="stats[type.key].red">0</span>
+                <span class="bg-green-600 px-2 py-0.5 rounded" x-text="stats[type.key].green">0</span>
+              </span>
+            </span>
           </button>
         </template>
       </div>
@@ -67,6 +74,7 @@
           partOfSpeech: null,
           partOfSpeechLabel: '',
           conjugationTypes: [],
+          stats: {},
           loading: true,
           error: null,
           initialized: false,
@@ -137,12 +145,29 @@
                   })
                   .then(data => {
                       this.conjugationTypes = data;
+                      this.loadStats();
                       this.loading = false;
                   })
                   .catch(e => {
                       this.error = 'Failed to load data: ' + e.message;
                       this.loading = false;
                   });
+          },
+
+          loadStats() {
+              this.conjugationTypes.forEach(type => {
+                  fetch(`/api/cards/queue-stats?deckConfigId=${this.deckId}&conjugationType=${type.key}`)
+                      .then(r => {
+                          if (!r.ok) throw new Error('Failed to load queue stats');
+                          return r.json();
+                      })
+                      .then(data => {
+                          this.stats[type.key] = data;
+                      })
+                      .catch(e => {
+                          console.warn(`Failed to load stats for ${type.key}:`, e);
+                      });
+              });
           },
 
           goBack() {
