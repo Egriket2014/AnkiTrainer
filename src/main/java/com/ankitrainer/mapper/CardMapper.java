@@ -17,6 +17,7 @@ public interface CardMapper {
     @Mapping(target = "extra", source = "card.extra")
     @Mapping(target = "expectedAnswer", source = "answer")
     @Mapping(target = "stem", expression = "java(CardMapper.extractStem(entity.getCard().getWord(), entity.getAnswer()))")
+    @Mapping(target = "conjugationLabel", expression = "java(entity.getConjugationType() != null ? entity.getConjugationType().getLabel() : null)")
     CardResponseDto toDto(CardSrsEntity entity);
 
     static String extractStem(String word, String answer) {

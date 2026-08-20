@@ -22,7 +22,7 @@ public class SessionController {
         sessionService.prepareCards(
                 request.getDeckConfigId(),
                 request.getPartOfSpeech(),
-                request.getConjugationType()
+                request.getConjugationTypes()
         );
     }
 

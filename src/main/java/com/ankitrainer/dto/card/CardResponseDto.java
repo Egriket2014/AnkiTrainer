@@ -16,4 +16,5 @@ public class CardResponseDto {
     private String extra;
     private String expectedAnswer;
     private String stem;
+    private String conjugationLabel;
 }

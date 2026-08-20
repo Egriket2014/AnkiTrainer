@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Anki Trainer - Select Training</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+<div class="container mx-auto p-8 max-w-2xl" x-data="selectTraining()" x-init="init()">
+
+    <div class="flex justify-between items-center mb-8">
+        <a href="/menu" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition">
+            ← Back
+        </a>
+        <h1 class="text-4xl font-bold">Anki Trainer</h1>
+        <div class="w-20"></div>
+    </div>
+
+    <div class="text-center">
+        <div x-show="loading" class="text-center py-8">
+            <p class="text-gray-500">Loading...</p>
+        </div>
+
+        <div x-show="error" class="text-center py-8">
+            <p class="text-red-600" x-text="error"></p>
+            <button @click="loadParts()" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm">
+                Retry
+            </button>
+        </div>
+
+        <div x-show="!loading && !error">
+            <div class="mb-4 text-left">
+                <p class="text-sm text-gray-500">
+                    Deck: <span class="font-medium text-gray-700" x-text="deckName"></span>
+                </p>
+                <p class="text-sm text-gray-500">
+                    Language: <span class="font-medium text-gray-700" x-text="languageLabel"></span>
+                </p>
+            </div>
+
+            <h2 class="text-xl font-semibold mb-4">Select part of speech:</h2>
+
+            <div class="space-y-3">
+                <template x-for="part in parts" :key="part.key">
+                    <div>
+                        <div class="flex items-center">
+                            <button @click="togglePart(part)"
+                                    class="shrink-0 w-11 h-11 flex items-center justify-center text-blue-600 hover:text-blue-700 transition">
+                                    <svg :class="part.expanded ? '' : '-rotate-90'"
+                                         class="w-7 h-7 transition-transform duration-200"
+                                         viewBox="0 0 20 20"
+                                         fill="none"
+                                         stroke="currentColor"
+                                         stroke-width="2.5"
+                                         stroke-linecap="round"
+                                         stroke-linejoin="round">
+                                        <polyline points="4 7 10 13 16 7"></polyline>
+                                    </svg>
+                                </button>
+                            <button @click="startAllTraining(part)"
+                                    class="flex-1 block bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-lg text-xl transition">
+                                <span class="flex items-center justify-between">
+                                    <span class="flex items-center gap-3">
+                                        <span x-text="part.label"></span>
+                                        <span class="bg-white/20 px-2 py-0.5 rounded text-sm font-medium"
+                                              x-text="selectedCount(part) + '/' + part.conjugationTypes.length"></span>
+                                    </span>
+                                    <span class="flex gap-3 text-sm font-medium">
+                                        <span class="bg-blue-700 px-2 py-0.5 rounded" x-text="part.totalStats.blue">0</span>
+                                        <span class="bg-red-700 px-2 py-0.5 rounded" x-text="part.totalStats.red">0</span>
+                                        <span class="bg-green-800 px-2 py-0.5 rounded" x-text="part.totalStats.green">0</span>
+                                    </span>
+                                </span>
+                            </button>
+                        </div>
+
+                        <div x-show="part.expanded" class="mt-2 pl-11 space-y-2">
+                            <template x-for="type in part.conjugationTypes" :key="type.key">
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox"
+                                           :checked="part.checked[type.key]"
+                                           @change="toggleType(part, type.key)"
+                                           class="w-5 h-5">
+                                    <button @click="startOneTraining(part, type.key)"
+                                            class="flex-1 block bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 px-6 rounded-lg text-lg transition">
+                                        <span class="flex items-center justify-between">
+                                            <span x-text="type.label"></span>
+                                            <span x-show="part.stats[type.key]" class="flex gap-3 text-sm font-medium">
+                                                <span class="bg-blue-600 px-2 py-0.5 rounded" x-text="part.stats[type.key].blue">0</span>
+                                                <span class="bg-red-600 px-2 py-0.5 rounded" x-text="part.stats[type.key].red">0</span>
+                                                <span class="bg-green-600 px-2 py-0.5 rounded" x-text="part.stats[type.key].green">0</span>
+                                            </span>
+                                        </span>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function selectTraining() {
+        return {
+            deckId: null,
+            deckName: '',
+            languageKey: null,
+            languageLabel: '',
+            parts: [],
+            loading: true,
+            error: null,
+            initialized: false,
+
+            init() {
+                if (this.initialized) return;
+                this.initialized = true;
+                const urlParams = new URLSearchParams(window.location.search);
+                this.deckId = urlParams.get('deckId');
+                this.languageKey = urlParams.get('language');
+
+                if (!this.deckId || !this.languageKey) {
+                    this.error = 'Missing deck or language parameters';
+                    this.loading = false;
+                    return;
+                }
+
+                this.loadParts();
+            },
+
+            loadParts() {
+                this.loading = true;
+                this.error = null;
+
+                fetch(`/api/deck-config/${this.deckId}`)
+                    .then(r => {
+                        if (!r.ok) throw new Error('Failed to load deck info');
+                        return r.json();
+                    })
+                    .then(data => {
+                        this.deckName = data.deckName;
+                    })
+                    .catch(e => {
+                        console.warn('Could not load deck name:', e);
+                        this.deckName = `Deck #${this.deckId}`;
+                    });
+
+                fetch('/api/language/supported-languages')
+                    .then(r => {
+                        if (!r.ok) throw new Error('Failed to load languages');
+                        return r.json();
+                    })
+                    .then(data => {
+                        const found = data.find(l => l.key === this.languageKey);
+                        this.languageLabel = found ? found.label : this.languageKey;
+                    })
+                    .catch(e => {
+                        console.warn('Could not load language label:', e);
+                        this.languageLabel = this.languageKey;
+                    });
+
+                fetch(`/api/language/supported-parts-of-speech?language=${this.languageKey}`)
+                    .then(r => {
+                        if (!r.ok) throw new Error('Failed to load parts of speech');
+                        return r.json();
+                    })
+                    .then(data => {
+                        this.parts = data.map(p => ({
+                            key: p.key,
+                            label: p.label,
+                            expanded: false,
+                            conjugationTypes: [],
+                            checked: {},
+                            stats: {},
+                            totalStats: { blue: 0, red: 0, green: 0 }
+                        }));
+                        this.parts.forEach(part => this.loadConjugations(part));
+                        this.loading = false;
+                    })
+                    .catch(e => {
+                        this.error = 'Failed to load data: ' + e.message;
+                        this.loading = false;
+                    });
+            },
+
+            loadConjugations(part) {
+                fetch(`/api/language/supported-conjugations?language=${this.languageKey}&partOfSpeech=${part.key}`)
+                    .then(r => {
+                        if (!r.ok) throw new Error('Failed to load conjugation types');
+                        return r.json();
+                    })
+                    .then(data => {
+                        part.conjugationTypes = data;
+                        data.forEach(type => part.checked[type.key] = true);
+                        this.loadStats(part);
+                    })
+                    .catch(e => {
+                        console.warn(`Failed to load conjugations for ${part.key}:`, e);
+                    });
+            },
+
+            loadStats(part) {
+                part.conjugationTypes.forEach(type => {
+                    fetch(`/api/cards/queue-stats?deckConfigId=${this.deckId}&conjugationType=${type.key}`)
+                        .then(r => {
+                            if (!r.ok) throw new Error('Failed to load queue stats');
+                            return r.json();
+                        })
+                        .then(data => {
+                            part.stats[type.key] = data;
+                            this.updateTotalStats(part);
+                        })
+                        .catch(e => {
+                            console.warn(`Failed to load stats for ${type.key}:`, e);
+                        });
+                });
+            },
+
+            togglePart(part) {
+                part.expanded = !part.expanded;
+            },
+
+            toggleType(part, key) {
+                part.checked[key] = !part.checked[key];
+                this.updateTotalStats(part);
+            },
+
+            selectedCount(part) {
+                return part.conjugationTypes.filter(type => part.checked[type.key]).length;
+            },
+
+            updateTotalStats(part) {
+                part.totalStats = { blue: 0, red: 0, green: 0 };
+                part.conjugationTypes.forEach(type => {
+                    if (part.checked[type.key] && part.stats[type.key]) {
+                        part.totalStats.blue += part.stats[type.key].blue;
+                        part.totalStats.red += part.stats[type.key].red;
+                        part.totalStats.green += part.stats[type.key].green;
+                    }
+                });
+            },
+
+            startAllTraining(part) {
+                const selected = part.conjugationTypes
+                    .filter(type => part.checked[type.key])
+                    .map(type => type.key);
+                window.location.href = `/session?deckId=${this.deckId}&language=${this.languageKey}&partOfSpeech=${part.key}&conjugations=${selected.join(',')}`;
+            },
+
+            startOneTraining(part, conjugationType) {
+                window.location.href = `/session?deckId=${this.deckId}&language=${this.languageKey}&partOfSpeech=${part.key}&conjugationType=${conjugationType}`;
+            }
+        }
+    }
+</script>
+</body>
+</html>

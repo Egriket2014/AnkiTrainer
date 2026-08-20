@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Set;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -14,5 +16,5 @@ import lombok.NoArgsConstructor;
 public class PrepareRequestDto {
     private Long deckConfigId;
     private PartOfSpeech partOfSpeech;
-    private ConjugationType conjugationType;
+    private Set<ConjugationType> conjugationTypes;
 }

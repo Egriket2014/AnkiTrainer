@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 @Service
 public class SessionService {
@@ -33,21 +36,34 @@ public class SessionService {
     // Session
     private SessionQueue currentQueue;
     private DeckConfigEntity currentDeckConfig;
-    private ConjugationType currentConjugationType;
+    private Set<ConjugationType> currentConjugationTypes;
     private PartOfSpeech partOfSpeech;
 
-    public void prepareCards(Long deckConfigId, PartOfSpeech partOfSpeech, ConjugationType conjugationType) {
-        log.info("Preparing cards for deck: {}, partOfSpeech: {}, conjugation: {}",
-                deckConfigId, partOfSpeech.getKey(), conjugationType.getKey());
+    public void prepareCards(Long deckConfigId, PartOfSpeech partOfSpeech, Set<ConjugationType> conjugationTypes) {
+        log.info("Preparing cards for deck: {}, partOfSpeech: {}, conjugations: {}",
+                deckConfigId, partOfSpeech.getKey(), conjugationTypes);
 
         this.currentDeckConfig = deckConfigService.getDeckConfigById(deckConfigId);
-        this.currentConjugationType = conjugationType;
+        this.currentConjugationTypes = conjugationTypes;
         this.partOfSpeech = partOfSpeech;
 
         this.currentQueue = loadQueue();
-        log.info("Prepared {} cards for session", currentQueue.size());
     }
 
+    private SessionQueue loadQueue() {
+        log.info("Filling queue for deck: {}, partOfSpeech: {}, {} conjugation types",
+                currentDeckConfig.getDeckName(), partOfSpeech, currentConjugationTypes.size());
+
+        SessionQueue queue = new SessionQueue();
+        for (ConjugationType conjugationType : currentConjugationTypes) {
+            List<CardSrsEntity> cards = loadCards(conjugationType);
+            log.debug("Loaded {} cards for conjugation: {}", cards.size(), conjugationType.getKey());
+            queue.addAll(cards);
+        }
+
+        log.info("Total queue size: {}", queue.size());
+        return queue;
+    }
 
     /*
         ТИП 1. Новая карточка - state=LEARNING, lastReview=null
@@ -63,47 +79,43 @@ public class SessionService {
         3) Запрашиваем все карточки типа 3.
         4) Запрашиваем все карточки типа 4.
         5) Запрашиваем все карточки типа 5 с лимитом < review_limit
-     */
-    private SessionQueue loadQueue() {
-        SessionQueue queue = new SessionQueue();
+    */
+    private List<CardSrsEntity> loadCards(ConjugationType conjugationType) {
+        List<CardSrsEntity> cards = new ArrayList<>();
 
         String deckName = currentDeckConfig.getDeckName();
-        ConjugationType conjugationType = currentConjugationType;
         int newLimit = currentDeckConfig.getNewLimit();
         int reviewLimit = currentDeckConfig.getReviewLimit();
-        log.info("Filling queue for deckName: {}, partOfSpeech: {}, conjugationType: {}",
-                deckName, partOfSpeech, conjugationType);
 
         // 1
         var type2 = cardService.findSeenTodayNewCards(deckName, conjugationType, LocalDate.now());
-        queue.addAll(type2);
+        cards.addAll(type2);
         log.debug("Loaded {} active new cards (type 2)", type2.size());
 
         // 2
         int remainingNewLimit = Math.max(0, newLimit - type2.size());
         if (remainingNewLimit > 0) {
             var type1 = cardService.findNewCardsForToday(deckName, conjugationType, remainingNewLimit);
-            queue.addAll(type1);
+            cards.addAll(type1);
             log.debug("Loaded {} fresh new cards (type 1)", type1.size());
         }
 
         // 3
         var type3 = cardService.findSeenNotTodayNewCards(deckName, conjugationType, LocalDate.now());
-        queue.addAll(type3);
+        cards.addAll(type3);
         log.debug("Loaded {} old new cards (type 3)", type3.size());
 
         // 4
         var type4 = cardService.findRelearningCards(deckName, conjugationType);
-        queue.addAll(type4);
+        cards.addAll(type4);
         log.debug("Loaded {} relearning cards (type 4)", type4.size());
 
         // 5
         var type5 = cardService.findReviewCards(deckName, conjugationType, reviewLimit);
-        queue.addAll(type5);
+        cards.addAll(type5);
         log.debug("Loaded {} review cards (type 5)", type5.size());
 
-        log.info("Total queue size: {}", queue.size());
-        return queue;
+        return cards;
     }
 
     public CardSrsEntity getCurrentCard() {
@@ -119,7 +131,11 @@ public class SessionService {
 
     public QueueStatsDto getQueueStats() {
         if (currentQueue == null) {
-            return QueueStatsDto.builder().blue(0).red(0).green(0).build();
+            return QueueStatsDto.builder()
+                    .blue(0)
+                    .red(0)
+                    .green(0)
+                    .build();
         }
         return currentQueue.stats();
     }
@@ -169,6 +185,6 @@ public class SessionService {
     private void clearSession() {
         currentQueue = null;
         currentDeckConfig = null;
-        currentConjugationType = null;
+        currentConjugationTypes = null;
     }
 }

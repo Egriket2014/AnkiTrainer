@@ -27,14 +27,9 @@ public class PageController {
         return "config-edit";
     }
 
-    @GetMapping("/select-part")
-    public String selectPartPage() {
-        return "select-part";
-    }
-
-    @GetMapping("/select-conjugation")
-    public String selectConjugationPage() {
-        return "select-conjugation";
+    @GetMapping("/select-training")
+    public String selectTrainingPage() {
+        return "select-training";
     }
 
     @GetMapping("/session")

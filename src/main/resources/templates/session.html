@@ -160,6 +160,8 @@
           partOfSpeech: '',
           conjugationType: '',
           conjugationTypeLabel: '',
+          isAll: false,
+          selectedConjugations: [],
           stats: { blue: 0, red: 0, green: 0 },
           stemAutoCompleteOnTab: false,
           initialized: false,
@@ -174,19 +176,15 @@
               const urlParams = new URLSearchParams(window.location.search);
               this.deckConfigId = urlParams.get('deckId');
               this.partOfSpeech = urlParams.get('partOfSpeech') || 'verb';
-              this.conjugationType = urlParams.get('conjugationType') || 'jp_verb_past';
 
-              const labels = {
-                  'jp_verb_te': 'て-form',
-                  'jp_verb_polite': 'ます-form (polite)',
-                  'jp_verb_negative': 'ない-form (negative)',
-                  'jp_verb_negative_polite': 'ません-form (negative polite)',
-                  'jp_verb_past': 'た-form (past)',
-                  'jp_verb_past_polite': 'ました-form (past polite)',
-                  'jp_verb_past_negative': 'なかった-form (past negative)',
-                  'jp_verb_past_negative_polite': 'ませんでした-form (past negative polite)'
-              };
-              this.conjugationTypeLabel = labels[this.conjugationType] || this.conjugationType;
+              const conjugations = urlParams.get('conjugations');
+              this.isAll = !!conjugations;
+              if (this.isAll) {
+                  this.selectedConjugations = conjugations.split(',').filter(Boolean);
+              } else {
+                  this.conjugationType = urlParams.get('conjugationType') || '';
+                  this.selectedConjugations = this.conjugationType ? [this.conjugationType] : [];
+              }
 
               if (!this.deckConfigId) {
                   console.error('❌ deckConfigId is required');
@@ -224,52 +222,19 @@
                   body: JSON.stringify({
                       deckConfigId: parseInt(this.deckConfigId),
                       partOfSpeech: this.partOfSpeech,
-                      conjugationType: this.conjugationType
+                      conjugationTypes: this.selectedConjugations
                   })
               })
               .then(r => {
                   if (!r.ok) throw new Error('Failed to prepare session');
                   this.loadStats();
-                  this.loadCurrentCard();
+                  this.loadNextCard();
               })
               .catch(e => {
                   console.error('❌ Error preparing session:', e);
                   alert('Failed to prepare cards: ' + e.message);
                   window.location.href = '/menu';
               });
-          },
-
-          loadCurrentCard() {
-              this.loading = true;
-
-              fetch('/api/session/current')
-                  .then(r => {
-                      if (r.status === 204) {
-                          this.complete = true;
-                          this.loading = false;
-                          console.log('🏁 Session complete!');
-                          return null;
-                      }
-                      if (!r.ok) throw new Error('Failed to load card');
-                      return r.json();
-                  })
-                  .then(data => {
-                      if (data === null) {
-                          return;
-                      }
-
-                      this.currentCard = data;
-                      this.loading = false;
-                      this.answer = '';
-                      this.answered = false;
-                      this.isCorrect = false;
-                      console.log('✅ Card loaded:', this.currentCard);
-                  })
-                  .catch(e => {
-                      console.error('❌ Error loading card:', e);
-                      this.loading = false;
-                      alert('Failed to load card: ' + e.message);
-                  });
           },
 
           loadStats() {
