@@ -18,11 +18,16 @@
   </div>
 
   <div class="mb-4 flex items-center justify-between">
-    <p class="text-gray-500" x-text="`${cards.length} cards`"></p>
-    <button @click="loadCards()"
-            class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg text-sm transition">
-      Refresh
-    </button>
+    <p class="text-gray-500" x-text="`${(page - 1) * limit + 1}–${Math.min(page * limit, total)} of ${total} cards`"></p>
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-gray-500">Limit:</label>
+      <input type="number" x-model.number="limit" min="1" max="100"
+             class="w-20 border rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-300">
+      <button @click="page = 1; totalPages = Math.ceil(total / limit); loadCards()"
+              class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-1.5 px-4 rounded-lg text-sm transition">
+        Refresh
+      </button>
+    </div>
   </div>
 
   <!-- Loading -->
@@ -60,8 +65,28 @@
     </table>
 
     <div x-show="!loading && cards.length === 0" class="text-center py-12">
-      <p class="text-gray-500">No cards in queue.</p>
+      <p class="text-gray-500">No cards found.</p>
     </div>
+  </div>
+
+  <!-- Пагинация -->
+  <div x-show="!loading && totalPages > 1"
+       class="mt-4 flex items-center justify-center gap-3">
+    <button @click="goToPage(page - 1)"
+            :disabled="page <= 1"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition
+                   bg-gray-200 hover:bg-gray-300 text-gray-700
+                   disabled:opacity-40 disabled:cursor-not-allowed">
+      ← Prev
+    </button>
+    <span class="text-sm text-gray-600" x-text="`Page ${page} / ${totalPages}`"></span>
+    <button @click="goToPage(page + 1)"
+            :disabled="page >= totalPages"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition
+                   bg-gray-200 hover:bg-gray-300 text-gray-700
+                   disabled:opacity-40 disabled:cursor-not-allowed">
+      Next →
+    </button>
   </div>
 </div>
 
@@ -75,6 +100,10 @@
           partOfSpeech: '',
           conjugationType: '',
           conjugations: null,
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0,
           initialized: false,
 
           init() {
@@ -87,7 +116,34 @@
               this.partOfSpeech = urlParams.get('partOfSpeech') || '';
               this.conjugationType = urlParams.get('conjugationType') || '';
               this.conjugations = urlParams.get('conjugations');
-              this.loadCards();
+
+              if (this.source === 'deck' && this.deckConfigId) {
+                  fetch('/api/cards/deck/count?deckConfigId=' + encodeURIComponent(this.deckConfigId))
+                      .then(r => r.json())
+                      .then(total => {
+                          this.total = total;
+                          this.totalPages = Math.ceil(total / this.limit);
+                          this.loadCards();
+                      })
+                      .catch(e => {
+                          console.error('❌ Error loading card count:', e);
+                          this.loadCards();
+                      });
+              } else if (this.source === 'queue') {
+                  fetch('/api/session/queue/count')
+                      .then(r => r.json())
+                      .then(total => {
+                          this.total = total;
+                          this.totalPages = Math.ceil(total / this.limit);
+                          this.loadCards();
+                      })
+                      .catch(e => {
+                          console.error('❌ Error loading queue count:', e);
+                          this.loadCards();
+                      });
+              } else {
+                  this.loadCards();
+              }
           },
 
           backUrl() {
@@ -108,31 +164,50 @@
           loadCards() {
               this.loading = true;
 
-              let endpoint;
-              switch (this.source) {
-                  case 'queue':
-                      endpoint = '/api/session/queue';
-                      break;
-                  case 'deck':
-                      endpoint = '/api/cards/deck?deckConfigId=' + encodeURIComponent(this.deckConfigId || '');
-                      break;
-                  default:
-                      endpoint = '/api/session/queue';
-              }
+              if (this.source === 'deck') {
+                  const params = new URLSearchParams();
+                  params.set('deckConfigId', this.deckConfigId || '');
+                  params.set('page', this.page);
+                  params.set('limit', this.limit);
 
-              fetch(endpoint)
-                  .then(r => {
-                      if (!r.ok) throw new Error('Failed to load cards');
-                      return r.json();
-                  })
-                  .then(data => {
-                      this.cards = data;
-                      this.loading = false;
-                  })
-                  .catch(e => {
-                      console.error('❌ Error loading cards:', e);
-                      this.loading = false;
-                  });
+                  fetch('/api/cards/deck?' + params.toString())
+                      .then(r => {
+                          if (!r.ok) throw new Error('Failed to load cards');
+                          return r.json();
+                      })
+                      .then(data => {
+                          this.cards = data;
+                          this.loading = false;
+                      })
+                      .catch(e => {
+                          console.error('❌ Error loading cards:', e);
+                          this.loading = false;
+                      });
+              } else {
+                  const params = new URLSearchParams();
+                  params.set('page', this.page);
+                  params.set('limit', this.limit);
+
+                  fetch('/api/session/queue?' + params.toString())
+                      .then(r => {
+                          if (!r.ok) throw new Error('Failed to load cards');
+                          return r.json();
+                      })
+                      .then(data => {
+                          this.cards = data;
+                          this.loading = false;
+                      })
+                      .catch(e => {
+                          console.error('❌ Error loading cards:', e);
+                          this.loading = false;
+                      });
+              }
+          },
+
+          goToPage(p) {
+              if (p < 1 || p > this.totalPages) return;
+              this.page = p;
+              this.loadCards();
           },
 
           formatDue(due) {

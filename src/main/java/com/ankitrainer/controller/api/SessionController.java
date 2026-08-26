@@ -39,9 +39,20 @@ public class SessionController {
         return cardMapper.toDto(srsEntity);
     }
 
+    @GetMapping("/queue/count")
+    public int getQueueCount() {
+        return sessionService.getQueueCards().size();
+    }
+
     @GetMapping("/queue")
-    public List<CardIndexResponseDto> getQueue() {
+    public List<CardIndexResponseDto> getQueue(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit
+    ) {
+        int offset = (page - 1) * limit;
         return sessionService.getQueueCards().stream()
+                .skip(offset)
+                .limit(limit)
                 .map(cardMapper::toIndexDto)
                 .toList();
     }

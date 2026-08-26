@@ -140,6 +140,14 @@ public class CardService {
         );
     }
 
+    public List<CardSrsEntity> getDeckCards(Long deckConfigId, int limit, int offset) {
+        return cardSrsRepository.findCardsByDeckConfigId(deckConfigId, limit, offset);
+    }
+
+    public int getDeckCardsCount(Long deckConfigId) {
+        return cardSrsRepository.countCardsByDeckConfigId(deckConfigId);
+    }
+
     @Transactional
     public void saveCardSrs(CardSrsEntity entity) {
         cardSrsRepository.save(entity);

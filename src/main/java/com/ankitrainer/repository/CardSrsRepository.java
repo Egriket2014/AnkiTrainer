@@ -180,4 +180,33 @@ public interface CardSrsRepository extends JpaRepository<CardSrsEntity, Long> {
             """, nativeQuery = true)
     int countReviewCards(@Param("deckName") String deckName,
                           @Param("conjugationType") String conjugationType);
+
+    @Query(value = """
+            SELECT
+                c.id AS id,
+                c.card_id AS card_id,
+                c.conjugation_type AS conjugation_type,
+                c.answer AS answer,
+                c.srs_json AS srs_json,
+                c.created_at AS created_at,
+                c.updated_at AS updated_at
+            FROM card_srs c
+            JOIN card card ON c.card_id = card.id
+            JOIN deck_config dc ON card.deck_name = dc.deck_name
+            WHERE dc.id = :deckConfigId
+            ORDER BY card.word ASC, c.conjugation_type ASC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<CardSrsEntity> findCardsByDeckConfigId(@Param("deckConfigId") Long deckConfigId,
+                                                @Param("limit") int limit,
+                                                @Param("offset") int offset);
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM card_srs c
+            JOIN card card ON c.card_id = card.id
+            JOIN deck_config dc ON card.deck_name = dc.deck_name
+            WHERE dc.id = :deckConfigId
+            """, nativeQuery = true)
+    int countCardsByDeckConfigId(@Param("deckConfigId") Long deckConfigId);
 }
