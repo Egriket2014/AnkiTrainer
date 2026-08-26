@@ -14,6 +14,9 @@ public class AppSettings {
     @Builder.Default
     private boolean stemAutoCompleteOnTab = true;
 
+    @Builder.Default
+    private boolean showQueueButton = false;
+
     public static AppSettings defaults() {
         return AppSettings.builder().build();
     }

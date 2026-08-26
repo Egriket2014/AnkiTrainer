@@ -3,7 +3,9 @@ package com.ankitrainer.queue;
 import com.ankitrainer.dto.session.QueueStatsDto;
 import com.ankitrainer.entity.CardSrsEntity;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.PriorityQueue;
 
 public class SessionQueue {
@@ -43,6 +45,15 @@ public class SessionQueue {
 
     public CardSrsEntity peek() {
         return queue.peek();
+    }
+
+    public List<CardSrsEntity> peekAll() {
+        PriorityQueue<CardSrsEntity> copy = new PriorityQueue<>(queue);
+        List<CardSrsEntity> result = new ArrayList<>(copy.size());
+        while (!copy.isEmpty()) {
+            result.add(copy.poll());
+        }
+        return result;
     }
 
     public int size() {

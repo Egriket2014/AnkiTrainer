@@ -49,10 +49,17 @@
 <div class="container mx-auto p-8 max-w-2xl" x-data="session()" x-init="init()">
 
   <div class="mb-8 flex items-center justify-between">
-    <a href="#" @click.prevent="saveAndGoBack()"
-       class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition inline-block">
-      ← Back
-    </a>
+    <div class="flex gap-3 items-center">
+      <a href="#" @click.prevent="saveAndGoBack()"
+         class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition inline-block">
+        ← Back
+      </a>
+      <a x-show="showQueueButton"
+         :href="queueUrl()"
+         class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition inline-block">
+        View queue
+      </a>
+    </div>
     <div class="flex gap-6">
       <span class="text-base font-medium text-blue-500" x-text="stats.blue"></span>
       <span class="text-base font-medium text-red-500" x-text="stats.red"></span>
@@ -164,6 +171,7 @@
           selectedConjugations: [],
           stats: { blue: 0, red: 0, green: 0 },
           stemAutoCompleteOnTab: false,
+          showQueueButton: false,
           initialized: false,
 
           init() {
@@ -204,11 +212,25 @@
                   })
                   .then(data => {
                       this.stemAutoCompleteOnTab = data.stemAutoCompleteOnTab;
+                      this.showQueueButton = data.showQueueButton;
                       console.log('⚙️ Settings loaded:', data);
                   })
                   .catch(e => {
                       console.error('❌ Error loading settings:', e);
                   });
+          },
+
+          queueUrl() {
+              const params = new URLSearchParams();
+              params.set('source', 'queue');
+              params.set('deckId', this.deckConfigId);
+              params.set('partOfSpeech', this.partOfSpeech);
+              if (this.isAll) {
+                  params.set('conjugations', this.selectedConjugations.join(','));
+              } else {
+                  params.set('conjugationType', this.conjugationType);
+              }
+              return '/card-index?' + params.toString();
           },
 
           prepareSession() {
@@ -340,6 +362,7 @@
                               }
 
                               this.currentCard = data;
+                              this.conjugationTypeLabel = data.conjugationLabel || '';
                               this.loading = false;
                               this.answer = '';
                               this.answered = false;

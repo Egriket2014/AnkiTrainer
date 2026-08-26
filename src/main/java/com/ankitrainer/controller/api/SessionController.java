@@ -1,5 +1,6 @@
 package com.ankitrainer.controller.api;
 
+import com.ankitrainer.dto.card.CardIndexResponseDto;
 import com.ankitrainer.dto.card.CardResponseDto;
 import com.ankitrainer.dto.session.PrepareRequestDto;
 import com.ankitrainer.dto.session.QueueStatsDto;
@@ -8,6 +9,8 @@ import com.ankitrainer.mapper.CardMapper;
 import com.ankitrainer.service.SessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/session")
@@ -34,6 +37,13 @@ public class SessionController {
 
         CardSrsEntity srsEntity = sessionService.getCurrentCard();
         return cardMapper.toDto(srsEntity);
+    }
+
+    @GetMapping("/queue")
+    public List<CardIndexResponseDto> getQueue() {
+        return sessionService.getQueueCards().stream()
+                .map(cardMapper::toIndexDto)
+                .toList();
     }
 
     @PostMapping("/check")

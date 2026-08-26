@@ -41,6 +41,26 @@
             </label>
         </div>
     </div>
+
+    <!-- Настройка: кнопка просмотра очереди -->
+    <div class="bg-gray-50 border rounded-lg p-4 mt-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="font-medium text-gray-800">Show queue button in session</h2>
+                <p class="text-sm text-gray-500">Show a button to view the session queue contents during training.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox"
+                       class="sr-only peer"
+                       x-model="showQueueButton"
+                       @change="saveSettings()">
+                <div class="w-11 h-6 bg-gray-300 peer-checked:bg-blue-500 rounded-full transition
+                            after:content-[''] after:absolute after:start-0.5 after:top-0.5 after:bg-white
+                            after:rounded-full after:h-5 after:w-5 after:transition-all
+                            peer-checked:after:translate-x-full"></div>
+            </label>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -48,6 +68,7 @@
         return {
             loading: true,
             stemAutoCompleteOnTab: false,
+            showQueueButton: false,
             initialized: false,
 
             init() {
@@ -64,6 +85,7 @@
                     })
                     .then(data => {
                         this.stemAutoCompleteOnTab = data.stemAutoCompleteOnTab;
+                        this.showQueueButton = data.showQueueButton;
                         this.loading = false;
                     })
                     .catch(e => {
@@ -79,7 +101,8 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        stemAutoCompleteOnTab: this.stemAutoCompleteOnTab
+                        stemAutoCompleteOnTab: this.stemAutoCompleteOnTab,
+                        showQueueButton: this.showQueueButton
                     })
                 })
                 .then(r => {

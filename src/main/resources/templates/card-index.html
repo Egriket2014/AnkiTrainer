@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Anki Trainer - Card Index</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body>
+<div class="container mx-auto p-8 max-w-5xl" x-data="cardIndex()" x-init="init()">
+
+  <!-- Шапка -->
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-4xl font-bold">Card Index</h1>
+    <a :href="backUrl()"
+       class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2 px-4 rounded-lg text-sm transition">
+      ← Back
+    </a>
+  </div>
+
+  <div class="mb-4 flex items-center justify-between">
+    <p class="text-gray-500" x-text="`${cards.length} cards`"></p>
+    <button @click="loadCards()"
+            class="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg text-sm transition">
+      Refresh
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div x-show="loading" class="text-center py-16">
+    <p class="text-gray-500">Loading cards...</p>
+  </div>
+
+  <!-- Таблица -->
+  <div x-show="!loading" class="bg-white border rounded-lg overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+      <tr class="bg-gray-50 border-b text-left text-gray-600">
+        <th class="py-3 px-4 font-medium">Word</th>
+        <th class="py-3 px-4 font-medium">Translation</th>
+        <th class="py-3 px-4 font-medium">Conjugation</th>
+        <th class="py-3 px-4 font-medium">Answer</th>
+        <th class="py-3 px-4 font-medium">Due</th>
+        <th class="py-3 px-4 font-medium">Status</th>
+      </tr>
+      </thead>
+      <tbody>
+      <template x-for="card in cards" :key="card.expectedAnswer + card.conjugationLabel">
+        <tr class="border-b last:border-b-0" :class="rowClasses(card.color)">
+          <td class="py-2 px-4 font-medium" x-text="card.word"></td>
+          <td class="py-2 px-4 text-gray-600" x-text="card.translation"></td>
+          <td class="py-2 px-4 text-gray-600" x-text="card.conjugationLabel"></td>
+          <td class="py-2 px-4 text-gray-600" x-text="card.expectedAnswer"></td>
+          <td class="py-2 px-4 text-gray-500" x-text="formatDue(card.due)"></td>
+          <td class="py-2 px-4">
+            <span class="text-gray-600" x-text="card.status"></span>
+          </td>
+        </tr>
+      </template>
+      </tbody>
+    </table>
+
+    <div x-show="!loading && cards.length === 0" class="text-center py-12">
+      <p class="text-gray-500">No cards in queue.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function cardIndex() {
+      return {
+          cards: [],
+          loading: true,
+          source: 'queue',
+          deckConfigId: null,
+          partOfSpeech: '',
+          conjugationType: '',
+          conjugations: null,
+          initialized: false,
+
+          init() {
+              if (this.initialized) return;
+              this.initialized = true;
+
+              const urlParams = new URLSearchParams(window.location.search);
+              this.source = urlParams.get('source') || 'queue';
+              this.deckConfigId = urlParams.get('deckId');
+              this.partOfSpeech = urlParams.get('partOfSpeech') || '';
+              this.conjugationType = urlParams.get('conjugationType') || '';
+              this.conjugations = urlParams.get('conjugations');
+              this.loadCards();
+          },
+
+          backUrl() {
+              if (this.source === 'queue' && this.deckConfigId) {
+                  const params = new URLSearchParams();
+                  params.set('deckId', this.deckConfigId);
+                  if (this.partOfSpeech) params.set('partOfSpeech', this.partOfSpeech);
+                  if (this.conjugations) {
+                      params.set('conjugations', this.conjugations);
+                  } else if (this.conjugationType) {
+                      params.set('conjugationType', this.conjugationType);
+                  }
+                  return '/session?' + params.toString();
+              }
+              return '/menu';
+          },
+
+          loadCards() {
+              this.loading = true;
+
+              let endpoint;
+              switch (this.source) {
+                  case 'queue':
+                      endpoint = '/api/session/queue';
+                      break;
+                  case 'deck':
+                      endpoint = '/api/cards/deck?deckConfigId=' + encodeURIComponent(this.deckConfigId || '');
+                      break;
+                  default:
+                      endpoint = '/api/session/queue';
+              }
+
+              fetch(endpoint)
+                  .then(r => {
+                      if (!r.ok) throw new Error('Failed to load cards');
+                      return r.json();
+                  })
+                  .then(data => {
+                      this.cards = data;
+                      this.loading = false;
+                  })
+                  .catch(e => {
+                      console.error('❌ Error loading cards:', e);
+                      this.loading = false;
+                  });
+          },
+
+          formatDue(due) {
+              if (!due) return '-';
+              try {
+                  return new Date(due).toLocaleString();
+              } catch (e) {
+                  return due;
+              }
+          },
+
+          rowClasses(color) {
+              switch (color) {
+                  case 'blue': return 'bg-blue-50';
+                  case 'red': return 'bg-red-50';
+                  case 'green': return 'bg-green-50';
+                  default: return '';
+              }
+          }
+      }
+  }
+</script>
+</body>
+</html>

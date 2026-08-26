@@ -36,4 +36,9 @@ public class PageController {
     public String sessionPage() {
         return "session";
     }
+
+    @GetMapping("/card-index")
+    public String cardIndexPage() {
+        return "card-index";
+    }
 }

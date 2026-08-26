@@ -140,6 +140,13 @@ public class SessionService {
         return currentQueue.stats();
     }
 
+    public List<CardSrsEntity> getQueueCards() {
+        if (currentQueue == null) {
+            return List.of();
+        }
+        return currentQueue.peekAll();
+    }
+
     @Transactional
     public boolean checkAnswer(String userAnswer) {
         if (isComplete()) {
