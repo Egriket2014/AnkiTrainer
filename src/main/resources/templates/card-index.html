@@ -118,7 +118,7 @@
               this.conjugations = urlParams.get('conjugations');
 
               if (this.source === 'deck' && this.deckConfigId) {
-                  fetch('/api/cards/deck/count?deckConfigId=' + encodeURIComponent(this.deckConfigId))
+                  fetch('/api/deck/count?deckConfigId=' + encodeURIComponent(this.deckConfigId))
                       .then(r => r.json())
                       .then(total => {
                           this.total = total;
@@ -170,7 +170,7 @@
                   params.set('page', this.page);
                   params.set('limit', this.limit);
 
-                  fetch('/api/cards/deck?' + params.toString())
+                  fetch('/api/deck?' + params.toString())
                       .then(r => {
                           if (!r.ok) throw new Error('Failed to load cards');
                           return r.json();

@@ -26,7 +26,7 @@ public class DeckConfigService {
     @Autowired
     private DeckConfigMapper deckConfigMapper;
     @Autowired
-    private CardService cardService;
+    private DeckService deckService;
 
     private final Map<String, DeckConfigEntity> cacheByName = new HashMap<>();
     private final Map<Long, DeckConfigEntity> cacheById = new HashMap<>();
@@ -76,7 +76,7 @@ public class DeckConfigService {
 
         syncCache(deckConfig, false);
         DeckConfigEntity saved = deckConfigRepository.save(deckConfig);
-        cardService.createCardsFromAnki(saved);
+        deckService.createCardsFromAnki(saved);
         return saved;
     }
 
@@ -107,17 +107,6 @@ public class DeckConfigService {
         deckConfigRepository.delete(deckConfig);
         syncCache(deckConfig, true);
     }
-
-//    @Transactional
-//    public void syncDeck(Long deckId) {
-//        log.info("Syncing deck with id: {}", deckId);
-//        DeckConfigEntity deck = getDeckConfigById(deckId);
-//
-//        // TODO
-//
-//        deck.setLastSyncedAt(LocalDateTime.now());
-//        deckConfigRepository.save(deck);
-//    }
 
     private void syncCache(DeckConfigEntity deckConfig, boolean isDelete) {
         if (isDelete) {

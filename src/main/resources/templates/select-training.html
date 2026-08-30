@@ -204,7 +204,7 @@
 
             loadStats(part) {
                 part.conjugationTypes.forEach(type => {
-                    fetch(`/api/cards/queue-stats?deckConfigId=${this.deckId}&conjugationType=${type.key}`)
+                    fetch(`/api/deck/rgb-stats?deckConfigId=${this.deckId}&conjugationType=${type.key}`)
                         .then(r => {
                             if (!r.ok) throw new Error('Failed to load queue stats');
                             return r.json();

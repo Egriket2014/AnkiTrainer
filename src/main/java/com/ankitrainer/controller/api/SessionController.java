@@ -67,9 +67,9 @@ public class SessionController {
         return sessionService.isComplete();
     }
 
-    @GetMapping("/queue-stats")
-    public QueueStatsDto getQueueStats() {
-        return sessionService.getQueueStats();
+    @GetMapping("/rgb-stats")
+    public QueueStatsDto getRGBStats() {
+        return sessionService.getRGBStats();
     }
 
     @PostMapping("/save")

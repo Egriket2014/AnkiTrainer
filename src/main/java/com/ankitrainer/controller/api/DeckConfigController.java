@@ -53,9 +53,4 @@ public class DeckConfigController {
     public void deleteDeck(@PathVariable Long id) {
         deckConfigService.deleteDeck(id);
     }
-
-    //    @PostMapping("/{id}/sync")
-    //    public ResponseEntity<?> syncDeck(@PathVariable Long id) {
-    //        // TODO
-    //    }
 }

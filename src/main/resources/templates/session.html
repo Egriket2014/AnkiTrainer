@@ -260,7 +260,7 @@
           },
 
           loadStats() {
-              fetch('/api/session/queue-stats')
+              fetch('/api/session/rgb-stats')
                   .then(r => r.json())
                   .then(data => {
                       this.stats = data;

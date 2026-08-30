@@ -27,7 +27,7 @@ public class SessionService {
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
     @Autowired
-    private CardService cardService;
+    private DeckService deckService;
     @Autowired
     private DeckConfigService deckConfigService;
     @Autowired
@@ -88,30 +88,30 @@ public class SessionService {
         int reviewLimit = currentDeckConfig.getReviewLimit();
 
         // 1
-        var type2 = cardService.findSeenTodayNewCards(deckName, conjugationType, LocalDate.now());
+        var type2 = deckService.findSeenTodayNewCards(deckName, conjugationType, LocalDate.now());
         cards.addAll(type2);
         log.debug("Loaded {} active new cards (type 2)", type2.size());
 
         // 2
         int remainingNewLimit = Math.max(0, newLimit - type2.size());
         if (remainingNewLimit > 0) {
-            var type1 = cardService.findNewCardsForToday(deckName, conjugationType, remainingNewLimit);
+            var type1 = deckService.findNewCardsForToday(deckName, conjugationType, remainingNewLimit);
             cards.addAll(type1);
             log.debug("Loaded {} fresh new cards (type 1)", type1.size());
         }
 
         // 3
-        var type3 = cardService.findSeenNotTodayNewCards(deckName, conjugationType, LocalDate.now());
+        var type3 = deckService.findSeenNotTodayNewCards(deckName, conjugationType, LocalDate.now());
         cards.addAll(type3);
         log.debug("Loaded {} old new cards (type 3)", type3.size());
 
         // 4
-        var type4 = cardService.findRelearningCards(deckName, conjugationType);
+        var type4 = deckService.findRelearningCards(deckName, conjugationType);
         cards.addAll(type4);
         log.debug("Loaded {} relearning cards (type 4)", type4.size());
 
         // 5
-        var type5 = cardService.findReviewCards(deckName, conjugationType, reviewLimit);
+        var type5 = deckService.findReviewCards(deckName, conjugationType, reviewLimit);
         cards.addAll(type5);
         log.debug("Loaded {} review cards (type 5)", type5.size());
 
@@ -129,7 +129,7 @@ public class SessionService {
         return currentQueue == null || currentQueue.isEmpty();
     }
 
-    public QueueStatsDto getQueueStats() {
+    public QueueStatsDto getRGBStats() {
         if (currentQueue == null) {
             return QueueStatsDto.builder()
                     .blue(0)
@@ -171,7 +171,7 @@ public class SessionService {
 
         log.debug("NEW SRS {}", card.getSrsCard().toJson());
 
-        cardService.saveCardSrs(card);
+        deckService.saveCardSrs(card);
 
         if (card.getState() == State.REVIEW) {
             log.debug("Card {} completed and moved to REVIEW, removing from queue", card.getAnswer());

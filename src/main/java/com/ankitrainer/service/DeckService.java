@@ -1,6 +1,7 @@
 package com.ankitrainer.service;
 
 import com.ankitrainer.dto.session.QueueStatsDto;
+import com.ankitrainer.dto.sync.SyncDeckResultDto;
 import com.ankitrainer.entity.CardEntity;
 import com.ankitrainer.entity.CardSrsEntity;
 import com.ankitrainer.entity.DeckConfigEntity;
@@ -19,14 +20,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
-public class CardService {
+public class DeckService {
 
-    private static final Logger log = LoggerFactory.getLogger(CardService.class);
+    private static final Logger log = LoggerFactory.getLogger(DeckService.class);
 
     @Autowired
     private CardRepository cardRepository;
@@ -47,6 +47,73 @@ public class CardService {
         cardsFromAnki.forEach(card -> createCardWithConjugations(card, deckConfig));
 
         log.info("Finished creating cards for deck: {}", deckConfig.getDeckName());
+    }
+
+    @Transactional
+    public SyncDeckResultDto syncCards(Long deckConfigId) {
+        DeckConfigEntity deckConfig = getDeckConfig(deckConfigId);
+        log.info("Syncing deck: {} (id={})", deckConfig.getDeckName(), deckConfigId);
+
+        Map<Long, CardEntity> ankiByNoteId = ankiConnectService.getSupportedCardsForDeck(deckConfig)
+                .stream()
+                .collect(Collectors.toMap(
+                        CardEntity::getNoteId,
+                        cardEntity -> cardEntity
+                ));
+        Map<Long, CardEntity> dbByNoteId = cardRepository.findAllByDeckName(deckConfig.getDeckName())
+                .stream()
+                .collect(Collectors.toMap(
+                        CardEntity::getNoteId,
+                        cardEntity -> cardEntity
+                ));
+
+        int created = 0;
+        int updated = 0;
+        int deleted = 0;
+
+        for (Long ankiNoteId : ankiByNoteId.keySet()) {
+            CardEntity dbCard = dbByNoteId.get(ankiNoteId);
+            if (dbCard == null) {
+                createCardWithConjugations(ankiByNoteId.get(ankiNoteId), deckConfig);
+                created++;
+                log.debug("Created card noteId={}", ankiNoteId);
+            } else {
+                CardEntity ankiCard = ankiByNoteId.get(ankiNoteId);
+                boolean changed = false;
+                if (!Objects.equals(dbCard.getWord(), ankiCard.getWord())) {
+                    dbCard.setWord(ankiCard.getWord());
+                    changed = true;
+                }
+                if (!Objects.equals(dbCard.getTranslation(), ankiCard.getTranslation())) {
+                    dbCard.setTranslation(ankiCard.getTranslation());
+                    changed = true;
+                }
+                if (!Objects.equals(dbCard.getExtra(), ankiCard.getExtra())) {
+                    dbCard.setExtra(ankiCard.getExtra());
+                    changed = true;
+                }
+                if (changed) {
+                    cardRepository.save(dbCard);
+                    updated++;
+                    log.debug("Updated card noteId={}", dbCard.getNoteId());
+                }
+            }
+        }
+
+        for (Long dbNoteId : dbByNoteId.keySet()) {
+            if (!ankiByNoteId.containsKey(dbNoteId)) {
+                cardRepository.delete(dbByNoteId.get(dbNoteId));
+                deleted++;
+                log.debug("Deleted card noteId={}", dbNoteId);
+            }
+        }
+
+        log.info("Sync complete: created={}, updated={}, deleted={}", created, updated, deleted);
+        return SyncDeckResultDto.builder()
+                .created(created)
+                .updated(updated)
+                .deleted(deleted)
+                .build();
     }
 
     @Transactional
@@ -154,7 +221,7 @@ public class CardService {
     }
 
     @Transactional
-    public QueueStatsDto getQueueStats(Long deckConfigId, ConjugationType conjugationType) {
+    public QueueStatsDto getRGBStats(Long deckConfigId, ConjugationType conjugationType) {
         DeckConfigEntity deckConfig = getDeckConfig(deckConfigId);
         String deckName = deckConfig.getDeckName();
         String type = conjugationType.getKey();
