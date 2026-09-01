@@ -89,12 +89,6 @@ public class DeckConfigService {
         log.info("Updating deck configuration: {}", deckConfig.getId());
 
         DeckConfigEntity existing = getDeckConfigById(deckConfig.getId());
-        if (!existing.getId().equals(deckConfig.getId())) {
-            throw new IllegalArgumentException(
-                    "ID mismatch: existing=" + existing.getId() + ", update=" + deckConfig.getId()
-            );
-        }
-
         deckConfigMapper.updateEntity(existing, deckConfig);
         syncCache(existing, false);
         return deckConfigRepository.save(existing);
